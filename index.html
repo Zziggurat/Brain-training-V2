@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <!-- Vista ajustada para evitar zoom en móviles: bloquea pinch zoom y mantiene el mismo tamaño -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Brain training</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Manifesto y configuración para PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <!-- Icono para dispositivos Apple -->
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <!-- Color de tema para navegadores compatibles -->
+  <meta name="theme-color" content="#3498db" />
+</head>
+<body>
+  <!-- Pantalla de inicio -->
+  <div id="home-screen" class="screen active">
+    <!-- Botón de configuración -->
+    <button id="home-settings-btn" class="settings-btn">⚙</button>
+    <!-- Contenedor principal del home -->
+    <div class="home-container">
+      <!-- Tarjeta principal de la pantalla de inicio -->
+      <div class="home-card home-circle">
+        <h1 id="home-title">Brain training</h1>
+        <!-- Controles para elegir el modo de operación -->
+        <div id="home-operation-toggle" class="operation-toggle">
+          <button id="home-op-mul" class="op-btn active">A × B = ?</button>
+          <button id="home-op-div" class="op-btn">A ÷ B = ?</button>
+        </div>
+        <!-- Barra de progreso dentro de la tarjeta -->
+        <div id="progress-wrapper">
+          <div id="progress-bar">
+            <div id="progress-fill"></div>
+          </div>
+          <span id="progress-text">0%</span>
+        </div>
+        <p class="progress-label">Tu progreso de aprendizaje</p>
+      </div>
+      <!-- Contenedor inferior con botones y asistente -->
+      <div class="home-bottom-row">
+        <!-- Botones de navegación principales -->
+        <div class="home-buttons">
+          <button id="home-learn-btn">Aprendizaje</button>
+          <button id="home-train-btn">Entrenamiento</button>
+          <button id="home-errors-btn">Errores de hoy</button>
+          <button id="home-tables-btn">Tablas</button>
+          <button id="home-progress-btn">Progreso</button>
+        </div>
+        <!-- Panel de asistente con recomendaciones -->
+        <div id="assistant-panel" class="assistant-panel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla de configuración -->
+  <div id="config-screen" class="screen">
+    <div class="config-header">
+      <button id="config-back-btn" class="back-home-btn">←</button>
+      <h2>Configuración</h2>
+    </div>
+    <div class="config-body">
+      <!-- Operación -->
+      <div class="config-section">
+        <label>Modo</label>
+        <div class="mode-options">
+          <label><input type="radio" name="operation" value="multiplication"> A × B = ?</label>
+          <label><input type="radio" name="operation" value="division"> A ÷ B = ?</label>
+        </div>
+      </div>
+      <!-- Intervalo de cifras -->
+      <div class="config-section">
+        <label>Intervalo de cifras</label>
+        <div class="interval-inputs">
+          <input type="number" id="config-min" min="1" value="1">
+          <span>a</span>
+          <input type="number" id="config-max" min="1" value="10">
+        </div>
+      </div>
+      <!-- Múltiples opciones -->
+      <div class="config-section">
+        <label>Múltiples opciones</label>
+        <div>
+          <input type="checkbox" id="config-multiple-choice"> <span>Mostrar cuatro opciones de respuesta</span>
+        </div>
+      </div>
+      <!-- Número de problemas -->
+      <div class="config-section">
+        <label>Número de problemas por sesión</label>
+        <select id="config-num-questions">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+      <!-- Tiempo por problema -->
+      <div class="config-section">
+        <label>Tiempo por problema (segundos)</label>
+        <input type="number" id="config-seconds" min="1" value="30">
+      </div>
+    </div>
+    <div class="config-footer">
+      <button id="config-save-btn">Guardar</button>
+      <button id="reset-progress-btn" class="reset-btn">Eliminar progreso</button>
+    </div>
+  </div>
+
+  <!-- Pantalla de aprendizaje -->
+  <div id="learning-screen" class="screen">
+    <div class="top-bar">
+      <button class="back-home-btn" id="learn-back-btn">←</button>
+      <span id="learn-progress" class="progress-text"></span>
+    </div>
+    <!-- Card para el problema y sus estrellas -->
+    <div class="problem-card">
+      <div class="card-front">
+        <div id="learn-stars" class="stars"></div>
+        <div id="learn-problem" class="problem"></div>
+      </div>
+    </div>
+    <div id="learn-answer-area" class="answer-area"></div>
+    <div id="learn-feedback" class="feedback"></div>
+    <button id="learn-next-btn" class="hidden">Siguiente</button>
+    <button id="learn-skip-btn">Next</button>
+  </div>
+
+  <!-- Pantalla de entrenamiento -->
+  <div id="training-screen" class="screen">
+    <div class="top-bar">
+      <button class="back-home-btn" id="train-back-btn">←</button>
+      <span id="train-progress" class="progress-text"></span>
+      <div id="train-timer-bar">
+        <div id="train-timer-fill"></div>
+      </div>
+    </div>
+    <!-- Card para el problema (sin estrellas en entrenamiento) -->
+    <div class="problem-card">
+      <div class="card-front">
+        <div id="train-problem" class="problem"></div>
+      </div>
+    </div>
+    <div id="train-answer-area" class="answer-area"></div>
+    <div id="train-feedback" class="feedback"></div>
+    <div id="train-score" class="score"></div>
+    <button id="train-restart-btn" class="hidden">Reintentar</button>
+  </div>
+
+  <!-- Pantalla de tablas -->
+  <div id="tables-screen" class="screen">
+    <div class="top-bar">
+      <button class="back-home-btn" id="tables-back-btn">←</button>
+      <h2>Tablas</h2>
+    </div>
+    <!-- Barra para habilitar entrenamiento específico -->
+    <div id="specific-training-bar" class="specific-training-bar">
+      <label for="specific-toggle" class="specific-label">Entrenamiento específico</label>
+      <input type="checkbox" id="specific-toggle">
+      <button id="start-specific-btn" class="hidden">Empezar entrenamiento específico</button>
+    </div>
+    <div id="tables-container" class="tables-container"></div>
+  </div>
+
+  <!-- Pantalla de progreso -->
+  <div id="progress-screen" class="screen">
+    <div class="progress-top-bar">
+      <button id="progress-back-btn">←</button>
+      <h2>Progreso</h2>
+    </div>
+    <div id="heatmap-container">
+      <!-- El mapa de calor se generará dinámicamente aquí -->
+    </div>
+    <!-- Tarjeta para mostrar el resultado de la celda seleccionada en el mapa de calor -->
+    <div id="result-card" class="result-card" aria-live="polite"></div>
+  </div>
+
+  <script src="script.js"></script>
+  <!-- Registro del service worker para funcionalidad offline -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((err) => {
+          console.log('Error al registrar el service worker:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
