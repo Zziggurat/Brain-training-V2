@@ -3,7 +3,11 @@
  * Se inspira en aplicaciones educativas móviles con colores vivos y botones redondeados.
  */
 
+ codex/analyze-ziggurat/brain-training-app-functionality-7i4udv
+/* Variables de áreas seguras para dispositivos con notch o barra */
+
 /* Variables de áreas seguras para dispositivos con notch */
+ main
 :root {
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
@@ -67,8 +71,13 @@ body {
 /* Botón de configuración en la pantalla de inicio */
 .settings-btn {
   position: absolute;
+ codex/analyze-ziggurat/brain-training-app-functionality-7i4udv
+  top: calc(var(--safe-area-top) + 16px);
+  left: calc(var(--safe-area-left) + 12px);
+
   top: 24px;
   left: 20px;
+ main
   width: 44px;
   height: 44px;
   border: none;
@@ -81,6 +90,9 @@ body {
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   cursor: pointer;
+  z-index: 1000;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* Tarjeta central en la pantalla de inicio */
@@ -310,6 +322,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  top: calc(var(--safe-area-top) + 16px);
+  left: calc(var(--safe-area-left) + 12px);
+  z-index: 1000;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* Cuerpo de configuración */
@@ -558,6 +576,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  top: calc(var(--safe-area-top) + 16px);
+  left: calc(var(--safe-area-left) + 12px);
+  z-index: 1000;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* Contenedor del mapa de calor */
