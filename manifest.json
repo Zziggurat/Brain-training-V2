@@ -1,7 +1,8 @@
 {
   "name": "Brain training",
   "short_name": "Brain",
-  "start_url": "./index.html",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f0f4f8",
   "theme_color": "#3498db",
