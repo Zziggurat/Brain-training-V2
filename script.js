@@ -56,6 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Botón para saltar o revelar respuesta en problemas escritos
   const learnSkipBtn = document.getElementById('learn-skip-btn');
+  const LEARN_SKIP_TEXT = 'Mostrar respuesta';
+  const LEARN_SKIP_ARIA = 'Mostrar la respuesta correcta y pasar a la siguiente pregunta';
+  if (learnSkipBtn) {
+    learnSkipBtn.textContent = LEARN_SKIP_TEXT;
+    learnSkipBtn.setAttribute('aria-label', LEARN_SKIP_ARIA);
+  }
 
   // Pantalla de entrenamiento
   const trainBackBtn = document.getElementById('train-back-btn');
@@ -1501,7 +1507,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Mover el botón de salto dentro del área de respuesta y ocultarlo
       if (learnSkipBtn) {
         learnSkipBtn.style.display = 'none';
-        learnSkipBtn.textContent = 'Next';
+        learnSkipBtn.textContent = LEARN_SKIP_TEXT;
+        learnSkipBtn.setAttribute('aria-label', LEARN_SKIP_ARIA);
         learnAnswerArea.appendChild(learnSkipBtn);
       }
     }
@@ -1648,6 +1655,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Mostrar botón de salto para permitir revelar la respuesta
       if (learnSkipBtn) {
         learnSkipBtn.style.display = 'block';
+        learnSkipBtn.textContent = LEARN_SKIP_TEXT;
+        learnSkipBtn.setAttribute('aria-label', LEARN_SKIP_ARIA);
       }
     }
   }
