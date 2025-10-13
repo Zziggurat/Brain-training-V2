@@ -3,6 +3,14 @@
  * Se inspira en aplicaciones educativas móviles con colores vivos y botones redondeados.
  */
 
+/* Variables de áreas seguras para dispositivos con notch */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+}
+
 /* Configuración global */
 html,
 body {
@@ -20,6 +28,7 @@ body {
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Cada pantalla se oculta por defecto y ocupa toda la altura */
@@ -30,6 +39,10 @@ body {
   box-sizing: border-box;
   position: relative;
   overflow-y: auto;
+  padding-top: calc(var(--safe-area-top) + 12px);
+  padding-right: calc(var(--safe-area-right) + 12px);
+  padding-bottom: calc(var(--safe-area-bottom) + 16px);
+  padding-left: calc(var(--safe-area-left) + 12px);
 }
 
 .screen.active {
@@ -54,7 +67,7 @@ body {
 /* Botón de configuración en la pantalla de inicio */
 .settings-btn {
   position: absolute;
-  top: 20px;
+  top: 24px;
   left: 20px;
   width: 44px;
   height: 44px;
@@ -511,7 +524,8 @@ body {
   /* se oculta por defecto mediante la clase .screen; aquí solo definimos la estructura */
   height: 100%;
   box-sizing: border-box;
-  padding: 20px;
+  padding: calc(var(--safe-area-top) + 24px) calc(var(--safe-area-right) + 20px)
+    calc(var(--safe-area-bottom) + 24px) calc(var(--safe-area-left) + 20px);
   display: flex;
   flex-direction: column;
 }
