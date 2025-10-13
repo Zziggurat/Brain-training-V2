@@ -3,7 +3,14 @@
  * Se inspira en aplicaciones educativas móviles con colores vivos y botones redondeados.
  */
 
-/* Configuración global */
+/* Variables y configuración global */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --btn-h: clamp(44px, 6.5vh, 56px);
+}
 html,
 body {
   height: 100%;
@@ -20,6 +27,13 @@ body {
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#app {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 16px 16px;
 }
 
 /* Cada pantalla se oculta por defecto y ocupa toda la altura */
@@ -53,11 +67,14 @@ body {
 
 /* Botón de configuración en la pantalla de inicio */
 .settings-btn {
-  position: absolute;
-  top: 20px;
-  left: 20px;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  z-index: 1000;
   border: none;
   border-radius: 50%;
   background-color: #ffffff;
@@ -93,7 +110,7 @@ body {
 
 /* Título principal en la tarjeta de inicio */
 #home-title {
-  font-size: 38px;
+  font-size: clamp(22px, 3vw, 28px);
   margin: 0 0 20px 0;
   color: #2c3e50;
   font-weight: bold;
@@ -160,7 +177,7 @@ body {
 
 /* Título de la pantalla de inicio */
 #home-title {
-  font-size: 24px;
+  font-size: clamp(22px, 3vw, 28px);
   margin: 0 0 20px 0;
   color: #2c3e50;
 }
@@ -252,7 +269,8 @@ body {
   width: 100%;
   max-width: 350px;
   margin: 0 auto;
-  font-size: 22px;
+  min-height: var(--btn-h);
+  font-size: clamp(16px, 2.2vw, 20px);
   font-weight: bold;
   border: none;
   border-radius: 28px;
@@ -273,6 +291,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 20px;
+  padding-left: calc(env(safe-area-inset-left, 0px) + 76px);
 }
 
 .config-header h2 {
@@ -285,8 +304,14 @@ body {
 
 /* Botones redondos para volver en diferentes pantallas */
 .back-home-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
   width: 48px;
   height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  z-index: 1000;
   border: none;
   border-radius: 50%;
   background-color: #ffffff;
@@ -384,6 +409,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
+  padding-left: calc(env(safe-area-inset-left, 0px) + 76px);
 }
 
 .top-bar .progress-text {
@@ -511,7 +537,8 @@ body {
   /* se oculta por defecto mediante la clase .screen; aquí solo definimos la estructura */
   height: 100%;
   box-sizing: border-box;
-  padding: 20px;
+  padding: calc(var(--safe-area-top) + 24px) calc(var(--safe-area-right) + 20px)
+    calc(var(--safe-area-bottom) + 24px) calc(var(--safe-area-left) + 20px);
   display: flex;
   flex-direction: column;
 }
@@ -521,6 +548,7 @@ body {
   align-items: center;
   gap: 12px;
   margin-bottom: 10px;
+  padding-left: calc(env(safe-area-inset-left, 0px) + 76px);
 }
 
 .progress-top-bar h2 {
@@ -532,8 +560,14 @@ body {
 }
 
 #progress-back-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
   width: 48px;
   height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  z-index: 1000;
   border: none;
   border-radius: 50%;
   background-color: #ffffff;
@@ -1236,4 +1270,12 @@ body {
 @media (max-width: 768px){
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
+}
+
+@media (max-width: 420px) {
+  #home-screen .home-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }

@@ -4,18 +4,27 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <!-- Vista ajustada para evitar zoom en móviles: bloquea pinch zoom y mantiene el mismo tamaño -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
+  />
   <title>Brain training</title>
   <link rel="stylesheet" href="style.css" />
 
   <!-- Manifesto y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
+  <!-- Metatags para experiencia a pantalla completa en iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Brain training" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <!-- Icono para dispositivos Apple -->
   <link rel="apple-touch-icon" href="icon-192.png" />
   <!-- Color de tema para navegadores compatibles -->
   <meta name="theme-color" content="#3498db" />
 </head>
 <body>
+  <div id="app">
   <!-- Pantalla de inicio -->
   <div id="home-screen" class="screen active">
     <!-- Botón de configuración -->
@@ -124,7 +133,7 @@
     <div id="learn-answer-area" class="answer-area"></div>
     <div id="learn-feedback" class="feedback"></div>
     <button id="learn-next-btn" class="hidden">Siguiente</button>
-    <button id="learn-skip-btn">Next</button>
+    <button id="learn-skip-btn">Mostrar respuesta</button>
   </div>
 
   <!-- Pantalla de entrenamiento -->
@@ -174,6 +183,8 @@
     </div>
     <!-- Tarjeta para mostrar el resultado de la celda seleccionada en el mapa de calor -->
     <div id="result-card" class="result-card" aria-live="polite"></div>
+  </div>
+
   </div>
 
   <script src="script.js"></script>
