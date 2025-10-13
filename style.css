@@ -3,7 +3,15 @@
  * Se inspira en aplicaciones educativas móviles con colores vivos y botones redondeados.
  */
 
+ codex/analyze-ziggurat/brain-training-app-functionality-soabp7
 /* Variables de áreas seguras para dispositivos con notch o barra */
+
+ codex/analyze-ziggurat/brain-training-app-functionality-7i4udv
+/* Variables de áreas seguras para dispositivos con notch o barra */
+
+/* Variables de áreas seguras para dispositivos con notch */
+ main
+ main
 :root {
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
@@ -28,6 +36,7 @@ body {
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Cada pantalla se oculta por defecto y ocupa toda la altura */
@@ -66,8 +75,18 @@ body {
 /* Botón de configuración en la pantalla de inicio */
 .settings-btn {
   position: absolute;
+< codex/analyze-ziggurat/brain-training-app-functionality-soabp7
   top: calc(var(--safe-area-top) + 16px);
   left: calc(var(--safe-area-left) + 12px);
+
+ codex/analyze-ziggurat/brain-training-app-functionality-7i4udv
+  top: calc(var(--safe-area-top) + 16px);
+  left: calc(var(--safe-area-left) + 12px);
+
+  top: 24px;
+  left: 20px;
+ main
+ main
   width: 44px;
   height: 44px;
   border: none;
@@ -532,7 +551,8 @@ body {
   /* se oculta por defecto mediante la clase .screen; aquí solo definimos la estructura */
   height: 100%;
   box-sizing: border-box;
-  padding: 20px;
+  padding: calc(var(--safe-area-top) + 24px) calc(var(--safe-area-right) + 20px)
+    calc(var(--safe-area-bottom) + 24px) calc(var(--safe-area-left) + 20px);
   display: flex;
   flex-direction: column;
 }
