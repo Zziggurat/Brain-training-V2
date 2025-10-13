@@ -5,8 +5,8 @@
 // cuando se despliegan cambios importantes en el código. Cambiar este
 // valor invalidará el caché anterior y hará que se descarguen los nuevos
 // archivos al instalar el service worker. Al usar un nombre único como
-// 'brain-training-v3' garantizamos que el servicio esté actualizado.
-const CACHE_NAME = 'brain-training-v3';
+// 'brain-training-v4' garantizamos que el servicio esté actualizado.
+const CACHE_NAME = 'brain-training-v4';
 // Archivos que se deben almacenar en caché para usar sin conexión.
 const CACHE_FILES = [
   './',
@@ -32,16 +32,17 @@ self.addEventListener('install', (event) => {
 // Evento de activación: limpia versiones antiguas del caché.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
         keys
           .filter((key) => key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       );
-    })
+      // Reclama control de las páginas abiertas una vez limpio el caché previo
+      await self.clients.claim();
+    })()
   );
-  // Reclama control de las páginas abiertas inmediatamente
-  self.clients.claim();
 });
 
 // Intercepta peticiones de red: intenta servir desde caché, si no, desde la red.
