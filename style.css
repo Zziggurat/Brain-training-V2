@@ -1283,6 +1283,8 @@ body {
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
  codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
 
  codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
@@ -1290,6 +1292,7 @@ body {
  codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
  main
  main
+main
 /* === Ajustes adicionales de compatibilidad para pantallas pequeñas y zonas seguras === */
 :root {
   --header-safe-offset: calc(env(safe-area-inset-top, 0px) + 72px);
@@ -1377,11 +1380,14 @@ body {
     margin: 36px 0 24px;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
  codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
 
  codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
 
 
+ main
  main
  main
  main
@@ -1446,10 +1452,13 @@ body {
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
 codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
 
  codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
  main
+main
 
 #progress-screen {
   display: none;
@@ -1555,7 +1564,10 @@ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
   }
 }
 
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
  codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+ main
 @media (max-width: 480px) {
   :root {
     --floating-header-clearance: calc(env(safe-area-inset-top, 0px) + 120px);
@@ -1618,6 +1630,80 @@ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+/* === Ajustes adicionales para vista móvil y progreso === */
+@media (max-width: 480px) {
+  #home-screen .home-buttons {
+    gap: 20px;
+  }
+
+  #home-screen .home-buttons button {
+    min-height: 86px;
+    padding: 20px 28px;
+    font-size: 18px;
+    line-height: 1.3;
+    border-radius: 30px;
+  }
+
+  #home-screen .assistant-panel,
+  #home-screen #assistant-panel {
+    padding: 18px 20px;
+    gap: 16px;
+  }
+
+  #home-screen .assistant-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  }
+
+  #home-screen .assistant-card h4 {
+    font-size: 18px;
+  }
+
+  #home-screen .assistant-card p {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  #home-screen .assistant-card .assistant-progress {
+    font-size: 14px;
+  }
+
+  #home-screen .assistant-card button {
+    font-size: 16px;
+    padding: 12px 0;
+    border-radius: 22px;
+  }
+}
+
+/* Ocultar la barra de desplazamiento visible del panel del asistente */
+.assistant-panel {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.assistant-panel::-webkit-scrollbar {
+  display: none;
+}
+
+/* Evitar que la sección de progreso quede cortada en la parte inferior */
+#progress-screen.active {
+  min-height: calc(var(--vh) * 100);
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+}
+
+#progress-screen.active .progress-top-bar,
+#progress-screen.active #heatmap-container,
+#progress-screen.active .metrics-card,
+#progress-screen.active .goal-card,
+#progress-screen.active #progress-wrapper {
+  width: min(560px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+
 
  codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
 
@@ -1644,3 +1730,4 @@ main
  main
 main
  main
+main
