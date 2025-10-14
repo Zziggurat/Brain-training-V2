@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const homeTablesBtn = document.getElementById('home-tables-btn');
   // Botón para la pantalla de progreso
   const homeProgressBtn = document.getElementById('home-progress-btn');
+  const homeProgressShortcut = document.getElementById('home-progress-shortcut');
   const homeOpMulBtn = document.getElementById('home-op-mul');
   const homeOpDivBtn = document.getElementById('home-op-div');
 
@@ -2118,6 +2119,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Botón para mostrar pantalla de progreso
     if (homeProgressBtn) {
       homeProgressBtn.addEventListener('click', () => {
+        showProgressScreen();
+      });
+    }
+    if (homeProgressShortcut) {
+      homeProgressShortcut.addEventListener('click', () => {
         showProgressScreen();
       });
     }
