@@ -1283,6 +1283,96 @@ body {
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+/* === Ajustes adicionales de compatibilidad para pantallas pequeñas y zonas seguras === */
+:root {
+  --header-safe-offset: calc(env(safe-area-inset-top, 0px) + 72px);
+}
+
+.screen {
+  padding-top: var(--header-safe-offset);
+}
+
+#home-screen {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 48px);
+}
+
+.config-header,
+.top-bar,
+.progress-top-bar {
+  padding-top: 0;
+  margin-top: 0;
+  padding-left: calc(env(safe-area-inset-left, 0px) + 20px);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 20px);
+}
+
+#progress-screen {
+  padding-top: var(--header-safe-offset);
+}
+
+#config-screen .config-body,
+#config-screen .config-footer {
+  padding-left: calc(env(safe-area-inset-left, 0px) + 20px);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 20px);
+}
+
+@media (max-width: 768px) {
+  .home-card {
+    margin: 32px auto;
+    padding: 40px 24px;
+  }
+
+  .home-buttons button {
+    font-size: 20px;
+    padding: 18px 0;
+  }
+
+  .config-header h2 {
+    font-size: 26px;
+  }
+
+  .mode-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .interval-inputs {
+    flex-wrap: wrap;
+  }
+
+  .problem {
+    font-size: 42px;
+    margin: 48px 0 28px;
+  }
+
+  .problem-card {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .config-body {
+    padding-left: calc(env(safe-area-inset-left, 0px) + 16px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 16px);
+  }
+
+  .config-section {
+    margin-bottom: 24px;
+  }
+
+  .home-buttons button {
+    font-size: 18px;
+    padding: 16px 0;
+  }
+
+  .problem {
+    font-size: 36px;
+    margin: 36px 0 24px;
+  }
+}
+
+ main
 /* === Ajustes para zonas seguras y layout en iOS === */
 :root {
   --vh: 1vh;
@@ -1344,10 +1434,13 @@ body {
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+
 codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
 
  codex/implement-ui-fixes-for-iphone-and-ipad-409f5a
  main
+main
 
 #progress-screen {
   display: none;
@@ -1356,8 +1449,11 @@ codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
 #progress-screen.active {
   display: flex;
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+
 codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
 
 
  main
 main
+ main
