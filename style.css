@@ -1283,6 +1283,10 @@ body {
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+ main
 /* === Ajustes adicionales de compatibilidad para pantallas pequeñas y zonas seguras === */
 :root {
   --header-safe-offset: calc(env(safe-area-inset-top, 0px) + 72px);
@@ -1370,6 +1374,11 @@ body {
     margin: 36px 0 24px;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+
+
+ main
+ main
 /* === Ajustes para zonas seguras y layout en iOS === */
 :root {
   --vh: 1vh;
@@ -1431,6 +1440,7 @@ body {
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
 
 #progress-screen {
   display: none;
@@ -1535,3 +1545,28 @@ body {
     padding-right: calc(env(safe-area-inset-right, 0px) + 12px);
   }
 }
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+
+codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-409f5a
+ main
+main
+
+#progress-screen {
+  display: none;
+}
+
+#progress-screen.active {
+  display: flex;
+}
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+
+codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
+
+
+ main
+main
+ main
+main
