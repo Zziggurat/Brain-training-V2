@@ -553,7 +553,6 @@ body {
   box-sizing: border-box;
   padding: calc(var(--safe-area-top) + 24px) calc(var(--safe-area-right) + 20px)
     calc(var(--safe-area-bottom) + 24px) calc(var(--safe-area-left) + 20px);
-  display: flex;
   flex-direction: column;
 }
 
@@ -1345,7 +1344,10 @@ body {
     position: static;
   }
 }
+codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
+
  codex/implement-ui-fixes-for-iphone-and-ipad-409f5a
+ main
 
 #progress-screen {
   display: none;
@@ -1354,5 +1356,8 @@ body {
 #progress-screen.active {
   display: flex;
 }
+codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
+
 
  main
+main
