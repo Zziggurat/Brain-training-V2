@@ -167,7 +167,7 @@ body {
 .progress-label {
   font-size: 18px;
   color: #2c3e50;
-  margin-top: 10px;
+  margin: 10px 0 24px;
 }
 
 /* Botón para eliminar progreso */
@@ -553,7 +553,6 @@ body {
   box-sizing: border-box;
   padding: calc(var(--safe-area-top) + 24px) calc(var(--safe-area-right) + 20px)
     calc(var(--safe-area-bottom) + 24px) calc(var(--safe-area-left) + 20px);
-  display: flex;
   flex-direction: column;
 }
 
@@ -1283,4 +1282,256 @@ body {
 @media (max-width: 768px){
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
+}
+/* === Ajustes adicionales de compatibilidad para pantallas pequeñas y zonas seguras === */
+:root {
+  --header-safe-offset: calc(env(safe-area-inset-top, 0px) + 72px);
+}
+
+.screen {
+  padding-top: var(--header-safe-offset);
+}
+
+#home-screen {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 48px);
+}
+
+.config-header,
+.top-bar,
+.progress-top-bar {
+  padding-top: 0;
+  margin-top: 0;
+  padding-left: calc(env(safe-area-inset-left, 0px) + 20px);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 20px);
+}
+
+#progress-screen {
+  padding-top: var(--header-safe-offset);
+}
+
+#config-screen .config-body,
+#config-screen .config-footer {
+  padding-left: calc(env(safe-area-inset-left, 0px) + 20px);
+  padding-right: calc(env(safe-area-inset-right, 0px) + 20px);
+}
+
+@media (max-width: 768px) {
+  .home-card {
+    margin: 32px auto;
+    padding: 40px 24px;
+  }
+
+  .home-buttons button {
+    font-size: 20px;
+    padding: 18px 0;
+  }
+
+  .config-header h2 {
+    font-size: 26px;
+  }
+
+  .mode-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .interval-inputs {
+    flex-wrap: wrap;
+  }
+
+  .problem {
+    font-size: 42px;
+    margin: 48px 0 28px;
+  }
+
+  .problem-card {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .config-body {
+    padding-left: calc(env(safe-area-inset-left, 0px) + 16px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 16px);
+  }
+
+  .config-section {
+    margin-bottom: 24px;
+  }
+
+  .home-buttons button {
+    font-size: 18px;
+    padding: 16px 0;
+  }
+
+  .problem {
+    font-size: 36px;
+    margin: 36px 0 24px;
+  }
+}
+/* === Ajustes para zonas seguras y layout en iOS === */
+:root {
+  --vh: 1vh;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --vh: 1dvh;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+#app {
+  max-width: 880px;
+  margin: 0 auto;
+  min-height: calc(var(--vh) * 100);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.settings-btn,
+.back-home-btn,
+#progress-back-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  z-index: 1000;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.back-home-btn + .settings-btn,
+.screen .back-home-btn ~ .settings-btn {
+  left: calc(env(safe-area-inset-left, 0px) + 16px + 56px);
+}
+
+@media (max-width: 420px) {
+  .home-bottom-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .home-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .assistant-panel {
+    width: 100%;
+    max-width: 100%;
+    margin: 12px 0 0 0;
+    position: static;
+  }
+}
+
+#progress-screen {
+  display: none;
+}
+
+#progress-screen.active {
+  display: flex;
+}
+
+/* === Ajustes adicionales para alinear contenido con el engranaje y centrar progreso === */
+:root {
+  --floating-header-clearance: calc(env(safe-area-inset-top, 0px) + 104px);
+}
+
+.screen {
+  padding-top: var(--floating-header-clearance);
+}
+
+#home-screen {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 96px);
+}
+
+.config-header,
+.top-bar,
+.progress-top-bar {
+  margin-top: 0;
+  margin-bottom: 24px;
+  padding-top: 0;
+}
+
+#config-screen .config-body,
+#config-screen .config-footer {
+  margin-top: 0;
+}
+
+#learning-screen .problem-card,
+#training-screen .problem-card {
+  margin-top: 24px;
+}
+
+#progress-screen {
+  padding-top: var(--floating-header-clearance);
+}
+
+#progress-screen.active {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+  min-height: calc(var(--vh) * 100 - 24px - env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+#progress-screen.active .progress-top-bar {
+  width: min(560px, 100%);
+  justify-content: center;
+}
+
+#progress-screen.active #heatmap-container {
+  flex-grow: 0;
+  width: min(560px, 100%);
+  max-height: 60vh;
+  margin: 0 auto;
+}
+
+#progress-screen.active #heatmap-container .heatmap-grid {
+  justify-content: center;
+}
+
+#progress-screen.active .result-card,
+#progress-screen.active #progress-wrapper,
+#progress-screen.active .goal-card,
+#progress-screen.active .metrics-card {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 480px) {
+  #progress-screen.active {
+    gap: 20px;
+  }
+
+  #progress-screen.active #heatmap-container {
+    max-height: none;
+  }
+
+  #home-screen .home-card,
+  #home-screen .home-buttons,
+  #home-screen .assistant-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #home-screen .home-buttons button {
+    width: 100%;
+    max-width: none;
+  }
+
+  #home-screen .home-bottom-row {
+    padding-left: calc(env(safe-area-inset-left, 0px) + 12px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 12px);
+  }
 }
