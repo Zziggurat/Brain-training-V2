@@ -1283,7 +1283,10 @@ body {
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+
  codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+ main
 /* === Ajustes adicionales de compatibilidad para pantallas pequeñas y zonas seguras === */
 :root {
   --header-safe-offset: calc(env(safe-area-inset-top, 0px) + 72px);
@@ -1371,7 +1374,10 @@ body {
     margin: 36px 0 24px;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
 
+
+ main
  main
 /* === Ajustes para zonas seguras y layout en iOS === */
 :root {
@@ -1434,6 +1440,112 @@ body {
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+
+#progress-screen {
+  display: none;
+}
+
+#progress-screen.active {
+  display: flex;
+}
+
+/* === Ajustes adicionales para alinear contenido con el engranaje y centrar progreso === */
+:root {
+  --floating-header-clearance: calc(env(safe-area-inset-top, 0px) + 104px);
+}
+
+.screen {
+  padding-top: var(--floating-header-clearance);
+}
+
+#home-screen {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 96px);
+}
+
+.config-header,
+.top-bar,
+.progress-top-bar {
+  margin-top: 0;
+  margin-bottom: 24px;
+  padding-top: 0;
+}
+
+#config-screen .config-body,
+#config-screen .config-footer {
+  margin-top: 0;
+}
+
+#learning-screen .problem-card,
+#training-screen .problem-card {
+  margin-top: 24px;
+}
+
+#progress-screen {
+  padding-top: var(--floating-header-clearance);
+}
+
+#progress-screen.active {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  text-align: center;
+  min-height: calc(var(--vh) * 100 - 24px - env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+#progress-screen.active .progress-top-bar {
+  width: min(560px, 100%);
+  justify-content: center;
+}
+
+#progress-screen.active #heatmap-container {
+  flex-grow: 0;
+  width: min(560px, 100%);
+  max-height: 60vh;
+  margin: 0 auto;
+}
+
+#progress-screen.active #heatmap-container .heatmap-grid {
+  justify-content: center;
+}
+
+#progress-screen.active .result-card,
+#progress-screen.active #progress-wrapper,
+#progress-screen.active .goal-card,
+#progress-screen.active .metrics-card {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 480px) {
+  #progress-screen.active {
+    gap: 20px;
+  }
+
+  #progress-screen.active #heatmap-container {
+    max-height: none;
+  }
+
+  #home-screen .home-card,
+  #home-screen .home-buttons,
+  #home-screen .assistant-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #home-screen .home-buttons button {
+    width: 100%;
+    max-width: none;
+  }
+
+  #home-screen .home-bottom-row {
+    padding-left: calc(env(safe-area-inset-left, 0px) + 12px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 12px);
+  }
+}
+
  codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
 
 codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
@@ -1457,3 +1569,4 @@ codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
  main
 main
  main
+main
