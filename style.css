@@ -1345,6 +1345,7 @@ body {
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-409f5a
 
 #progress-screen {
   display: none;
@@ -1353,3 +1354,5 @@ body {
 #progress-screen.active {
   display: flex;
 }
+
+ main
