@@ -167,7 +167,7 @@ body {
 .progress-label {
   font-size: 18px;
   color: #2c3e50;
-  margin-top: 10px;
+  margin: 10px 0 24px;
 }
 
 /* Botón para eliminar progreso */
@@ -553,7 +553,6 @@ body {
   box-sizing: border-box;
   padding: calc(var(--safe-area-top) + 24px) calc(var(--safe-area-right) + 20px)
     calc(var(--safe-area-bottom) + 24px) calc(var(--safe-area-left) + 20px);
-  display: flex;
   flex-direction: column;
 }
 
@@ -1283,4 +1282,73 @@ body {
 @media (max-width: 768px){
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
+}
+/* === Ajustes para zonas seguras y layout en iOS === */
+:root {
+  --vh: 1vh;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --vh: 1dvh;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+#app {
+  max-width: 880px;
+  margin: 0 auto;
+  min-height: calc(var(--vh) * 100);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.settings-btn,
+.back-home-btn,
+#progress-back-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  z-index: 1000;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.back-home-btn + .settings-btn,
+.screen .back-home-btn ~ .settings-btn {
+  left: calc(env(safe-area-inset-left, 0px) + 16px + 56px);
+}
+
+@media (max-width: 420px) {
+  .home-bottom-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .home-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .assistant-panel {
+    width: 100%;
+    max-width: 100%;
+    margin: 12px 0 0 0;
+    position: static;
+  }
+}
+
+#progress-screen {
+  display: none;
+}
+
+#progress-screen.active {
+  display: flex;
 }
