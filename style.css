@@ -1283,6 +1283,16 @@ body {
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+ main
+ main
+main
 /* === Ajustes adicionales de compatibilidad para pantallas pequeñas y zonas seguras === */
 :root {
   --header-safe-offset: calc(env(safe-area-inset-top, 0px) + 72px);
@@ -1370,6 +1380,17 @@ body {
     margin: 36px 0 24px;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+
+
+ main
+ main
+ main
+ main
 /* === Ajustes para zonas seguras y layout en iOS === */
 :root {
   --vh: 1vh;
@@ -1431,6 +1452,13 @@ body {
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
+codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+ main
+main
 
 #progress-screen {
   display: none;
@@ -1536,6 +1564,10 @@ body {
   }
 }
 
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+ main
 @media (max-width: 480px) {
   :root {
     --floating-header-clearance: calc(env(safe-area-inset-top, 0px) + 120px);
@@ -1598,6 +1630,7 @@ body {
     position: static;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-d33a7w
 /* === Ajustes adicionales para vista móvil y progreso === */
 @media (max-width: 480px) {
   #home-screen .home-buttons {
@@ -1670,3 +1703,31 @@ body {
   margin-right: auto;
 }
 
+
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+
+codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
+
+ codex/implement-ui-fixes-for-iphone-and-ipad-409f5a
+ main
+main
+
+#progress-screen {
+  display: none;
+}
+
+#progress-screen.active {
+  display: flex;
+}
+ codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+
+codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
+
+
+ main
+main
+ main
+main
+ main
+main
