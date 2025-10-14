@@ -1283,9 +1283,12 @@ body {
   .problem-card{ min-height: 190px; }
   .problem{ line-height: 1.1; }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+
  codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
 
  codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
+ main
  main
 /* === Ajustes adicionales de compatibilidad para pantallas pequeñas y zonas seguras === */
 :root {
@@ -1374,9 +1377,12 @@ body {
     margin: 36px 0 24px;
   }
 }
+ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+
  codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
 
 
+ main
  main
  main
 /* === Ajustes para zonas seguras y layout en iOS === */
@@ -1440,7 +1446,10 @@ body {
     position: static;
   }
 }
+codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+
  codex/implement-ui-fixes-for-iphone-and-ipad-d2bddi
+ main
 
 #progress-screen {
   display: none;
@@ -1546,6 +1555,70 @@ body {
   }
 }
 
+ codex/implement-ui-fixes-for-iphone-and-ipad-vkz7ui
+@media (max-width: 480px) {
+  :root {
+    --floating-header-clearance: calc(env(safe-area-inset-top, 0px) + 120px);
+  }
+
+  #home-screen {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 120px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+
+  #home-screen .home-container {
+    width: 100%;
+    max-width: 520px;
+    padding: 0 calc(env(safe-area-inset-left, 0px) + 20px) calc(32px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 28px;
+  }
+
+  #home-screen .home-card {
+    width: 100%;
+    margin: 0;
+  }
+
+  #home-screen .home-card.home-circle {
+    border-radius: 60% 60% 45% 45%;
+    padding: 52px 28px 44px;
+  }
+
+  #home-screen .home-bottom-row {
+    width: 100%;
+    margin-top: 0;
+    align-items: center;
+    gap: 20px;
+  }
+
+  #home-screen .home-buttons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  #home-screen .home-buttons button {
+    width: 100%;
+    max-width: none;
+    min-height: 68px;
+    font-size: 20px;
+  }
+
+  #assistant-panel.assistant-panel,
+  #home-screen #assistant-panel {
+    width: 100%;
+    max-width: 100%;
+    position: static;
+  }
+}
+
  codex/implement-ui-fixes-for-iphone-and-ipad-37yklq
 
 codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
@@ -1570,3 +1643,4 @@ codex/implement-ui-fixes-for-iphone-and-ipad-wclj5g
 main
  main
 main
+ main
