@@ -93,6 +93,7 @@ button:disabled {
   align-items: center;
   gap: 26px;
   overflow: hidden;
+  position: relative;
 }
 
 .home-top-bar {
@@ -277,6 +278,16 @@ button:disabled {
   box-shadow: 0 18px 28px rgba(0, 0, 0, 0.12);
 }
 
+.version-tag {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(29, 43, 58, 0.6);
+  padding: 16px 0 32px;
+}
+
 #assistant-panel {
   width: 100%;
   max-height: 210px;
@@ -289,6 +300,171 @@ button:disabled {
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
+}
+
+@media (min-width: 1024px) {
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #fdd835;
+    color: #2c3e50;
+    display: block;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 1280px;
+    min-height: 100vh;
+    margin: 0 auto;
+  }
+
+  .screen {
+    padding: 48px 80px;
+  }
+
+  .screen.active {
+    display: block;
+  }
+
+  #home-screen {
+    align-items: flex-start;
+  }
+
+  .home-top-bar {
+    display: block;
+    height: 0;
+  }
+
+  #home-settings-btn {
+    position: absolute;
+    top: 48px;
+    left: 80px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #007aff;
+    font-size: 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  #home-progress-shortcut,
+  .home-bottom-actions {
+    display: none;
+  }
+
+  .round-icon-btn {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    background: #ffffff;
+    color: #007aff;
+  }
+
+  .home-container {
+    width: 100%;
+    max-width: 1120px;
+    margin: 48px 0 96px;
+    gap: 56px;
+    align-items: flex-start;
+  }
+
+  .home-card {
+    max-width: 420px;
+    padding: 56px 40px;
+    border-radius: 36px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .home-card::after {
+    display: none;
+  }
+
+  #home-title {
+    font-size: 36px;
+    color: #2c3e50;
+  }
+
+  .operation-toggle {
+    background: rgba(0, 122, 255, 0.1);
+  }
+
+  .op-btn {
+    color: #007aff;
+  }
+
+  .op-btn.active {
+    background: #007aff;
+    color: #ffffff;
+    box-shadow: none;
+  }
+
+  #progress-wrapper {
+    background: #e0e0e0;
+    border-radius: 12px;
+    height: 30px;
+  }
+
+  #progress-fill {
+    background: #4caf50;
+    border-radius: 12px;
+  }
+
+  #progress-text {
+    color: #2c3e50;
+  }
+
+  .progress-label {
+    color: #2c3e50;
+  }
+
+  .home-bottom-row {
+    width: 100%;
+    max-width: 420px;
+    gap: 24px;
+    align-items: stretch;
+  }
+
+  .home-buttons {
+    width: 100%;
+    gap: 16px;
+    margin: 0;
+  }
+
+  .home-buttons button {
+    padding: 18px 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    border-radius: 28px;
+    background: #007aff;
+    color: #ffffff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: none;
+  }
+
+  .home-buttons button:active {
+    transform: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  #assistant-panel {
+    max-height: none;
+    background: #ffffff;
+    backdrop-filter: none;
+    border-radius: 32px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .assistant-card {
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: none;
+  }
+
+  .problem-card {
+    border-radius: 32px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .assistant-card {
@@ -741,12 +917,8 @@ input[type="checkbox"] {
 }
 
 /* --- Adaptaciones responsivas --- */
-@media (min-width: 768px) {
-  #app {
-    max-width: 520px;
-  }
-
+@media (min-width: 1024px) {
   #assistant-panel {
-    max-height: 260px;
+    max-height: none;
   }
 }
