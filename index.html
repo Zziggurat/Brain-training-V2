@@ -9,7 +9,7 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
   />
   <title>Brain training</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=r-20241026-1200" />
 
   <!-- Manifesto y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -27,13 +27,27 @@
   <div id="app">
   <!-- Pantalla de inicio -->
   <div id="home-screen" class="screen active">
-    <!-- Botón de configuración -->
-    <button id="home-settings-btn" class="settings-btn">⚙</button>
+    <div class="home-top-bar">
+      <button
+        id="home-settings-btn"
+        class="round-icon-btn settings-btn"
+        aria-label="Abrir configuración"
+      >
+        ⚙
+      </button>
+      <button
+        id="home-progress-shortcut"
+        class="round-icon-btn"
+        aria-label="Ver progreso general"
+      >
+        🏆
+      </button>
+    </div>
     <!-- Contenedor principal del home -->
     <div class="home-container">
       <!-- Tarjeta principal de la pantalla de inicio -->
       <div class="home-card home-circle">
-        <h1 id="home-title">Brain training</h1>
+        <h1 id="home-title">Tabla de multiplicación</h1>
         <!-- Controles para elegir el modo de operación -->
         <div id="home-operation-toggle" class="operation-toggle">
           <button id="home-op-mul" class="op-btn active">A × B = ?</button>
@@ -60,6 +74,10 @@
         </div>
         <!-- Panel de asistente con recomendaciones -->
         <div id="assistant-panel" class="assistant-panel"></div>
+      </div>
+      <div class="home-bottom-actions">
+        <button class="round-icon-btn" type="button" aria-label="Ayuda">❓</button>
+        <button class="round-icon-btn" type="button" aria-label="Consejos">💡</button>
       </div>
     </div>
   </div>
@@ -185,18 +203,10 @@
     <div id="result-card" class="result-card" aria-live="polite"></div>
   </div>
 
+  <footer class="version-tag" aria-label="Marcador de versión">r-desktop-on • v=r-20241026-1200</footer>
+
   </div>
 
-  <script src="script.js"></script>
-  <!-- Registro del service worker para funcionalidad offline -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch((err) => {
-          console.log('Error al registrar el service worker:', err);
-        });
-      });
-    }
-  </script>
+  <script src="script.js?v=r-20241026-1200"></script>
 </body>
 </html>

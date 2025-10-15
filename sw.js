@@ -1,64 +1,33 @@
-// Service worker para la aplicación de tablas de multiplicar.
-// Proporciona caché básica para funcionalidad offline.
+/*
+ * Service worker placeholder that immediately unregisters itself.
+ * Keeps legacy installations from holding onto cached assets while
+ * allowing new loads to proceed without a service worker.
+ */
 
-// Actualizamos el nombre del caché para forzar a los clientes a actualizar
-// cuando se despliegan cambios importantes en el código. Cambiar este
-// valor invalidará el caché anterior y hará que se descarguen los nuevos
-// archivos al instalar el service worker. Al usar un nombre único como
-// 'brain-training-v4' garantizamos que el servicio esté actualizado.
-const CACHE_NAME = 'brain-training-v4';
-// Archivos que se deben almacenar en caché para usar sin conexión.
-const CACHE_FILES = [
-  './',
-  './index.html',
-  './style.css',
-  './script.js',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
-];
-
-// Evento de instalación: se abre el caché y se agregan los archivos.
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(CACHE_FILES);
-    })
-  );
-  // Activa inmediatamente el SW sin esperar a las pestañas cerrarse.
+  // Take control as soon as we're installed so we can unregister.
   self.skipWaiting();
 });
 
-// Evento de activación: limpia versiones antiguas del caché.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      const keys = await caches.keys();
-      await Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      );
-      // Reclama control de las páginas abiertas una vez limpio el caché previo
-      await self.clients.claim();
+      // Drop any caches the previous worker created.
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+
+      // Unregister this worker so the app runs without a SW going forward.
+      await self.registration.unregister();
+
+      // Refresh open clients so they pick up the non-SW controlled version.
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      clients.forEach((client) => {
+        client.navigate(client.url);
+      });
     })()
   );
 });
 
-// Intercepta peticiones de red: intenta servir desde caché, si no, desde la red.
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // Si encontramos en caché, devolvemos esa respuesta.
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      // En caso contrario, intentamos obtenerla de la red.
-      return fetch(event.request).catch(() => {
-        // Si hay un error (sin conexión), podríamos devolver un fallback.
-        // Aquí simplemente rechazamos la promesa.
-        return Promise.reject('offline');
-      });
-    })
-  );
+self.addEventListener('fetch', () => {
+  // No-op fetch handler keeps the worker from attempting to respond with stale cache.
 });
