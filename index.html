@@ -27,13 +27,27 @@
   <div id="app">
   <!-- Pantalla de inicio -->
   <div id="home-screen" class="screen active">
-    <!-- Botón de configuración -->
-    <button id="home-settings-btn" class="settings-btn">⚙</button>
+    <div class="home-top-bar">
+      <button
+        id="home-settings-btn"
+        class="round-icon-btn settings-btn"
+        aria-label="Abrir configuración"
+      >
+        ⚙
+      </button>
+      <button
+        id="home-progress-shortcut"
+        class="round-icon-btn"
+        aria-label="Ver progreso general"
+      >
+        🏆
+      </button>
+    </div>
     <!-- Contenedor principal del home -->
     <div class="home-container">
       <!-- Tarjeta principal de la pantalla de inicio -->
       <div class="home-card home-circle">
-        <h1 id="home-title">Brain training</h1>
+        <h1 id="home-title">Tabla de multiplicación</h1>
         <!-- Controles para elegir el modo de operación -->
         <div id="home-operation-toggle" class="operation-toggle">
           <button id="home-op-mul" class="op-btn active">A × B = ?</button>
@@ -60,6 +74,10 @@
         </div>
         <!-- Panel de asistente con recomendaciones -->
         <div id="assistant-panel" class="assistant-panel"></div>
+      </div>
+      <div class="home-bottom-actions">
+        <button class="round-icon-btn" type="button" aria-label="Ayuda">❓</button>
+        <button class="round-icon-btn" type="button" aria-label="Consejos">💡</button>
       </div>
     </div>
   </div>
@@ -184,6 +202,8 @@
     <!-- Tarjeta para mostrar el resultado de la celda seleccionada en el mapa de calor -->
     <div id="result-card" class="result-card" aria-live="polite"></div>
   </div>
+
+  <footer class="version-tag" aria-label="Marcador de versión">r-desktop-on</footer>
 
   </div>
 
