@@ -9,7 +9,7 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
   />
   <title>Brain training</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=r-20241026-1200" />
 
   <!-- Manifesto y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -203,20 +203,10 @@
     <div id="result-card" class="result-card" aria-live="polite"></div>
   </div>
 
-  <footer class="version-tag" aria-label="Marcador de versión">r-desktop-on</footer>
+  <footer class="version-tag" aria-label="Marcador de versión">r-desktop-on • v=r-20241026-1200</footer>
 
   </div>
 
-  <script src="script.js"></script>
-  <!-- Registro del service worker para funcionalidad offline -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch((err) => {
-          console.log('Error al registrar el service worker:', err);
-        });
-      });
-    }
-  </script>
+  <script src="script.js?v=r-20241026-1200"></script>
 </body>
 </html>
