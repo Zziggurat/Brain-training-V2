@@ -654,7 +654,7 @@ button:disabled {
     background-color: #040714;
     background-image: url("assets/ciudad-cyberpunk.png");
     background-size: cover;
-    background-position: center;
+    background-position: center bottom;
     background-repeat: no-repeat;
   }
 
