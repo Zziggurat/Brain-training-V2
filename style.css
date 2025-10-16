@@ -649,6 +649,22 @@ button:disabled {
   }
 }
 
+@media (max-width: 1024px) {
+  body {
+    background-color: #040714;
+    background-image: url("assets/ciudad-cyberpunk.png");
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+  }
+
+  #app {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 .assistant-card {
   background: var(--card-bg);
   border-radius: 18px;
@@ -782,8 +798,8 @@ button:disabled {
 /* --- Configuración --- */
 #config-screen {
   gap: 18px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .config-header,
@@ -852,6 +868,12 @@ button:disabled {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.config-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .interval-inputs {
