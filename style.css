@@ -700,14 +700,22 @@ button:disabled {
   }
 
   .problem-card {
-    padding: 14px 16px;
-    border-radius: 22px;
+    padding: 10px 16px;
+    border-radius: 20px;
     margin-bottom: 0;
   }
 
   .card-front {
-    min-height: 96px;
-    gap: 6px;
+    min-height: unset;
+    gap: 4px;
+  }
+
+  .card-front > *:first-child {
+    margin-top: 0;
+  }
+
+  .card-front > *:last-child {
+    margin-bottom: 0;
   }
 
   .stars {
