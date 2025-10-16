@@ -649,6 +649,38 @@ button:disabled {
   }
 }
 
+@media (max-width: 1024px) {
+  :root {
+    --mobile-wallpaper: url("https://raw.githubusercontent.com/Zziggurat/Brain-training/main/assets/ciudad-cyberpunk.png");
+    --mobile-wallpaper-shift: 72px;
+  }
+
+  html {
+    background-color: #040714;
+    background-image: var(--mobile-wallpaper);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center calc(100% + var(--mobile-wallpaper-shift));
+  }
+
+  @supports (env(safe-area-inset-bottom)) {
+    html {
+      background-position: center
+        calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
+    }
+  }
+
+  body {
+    background-color: transparent;
+  }
+
+  #app {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 .assistant-card {
   background: var(--card-bg);
   border-radius: 18px;
@@ -782,8 +814,9 @@ button:disabled {
 /* --- Configuración --- */
 #config-screen {
   gap: 18px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
+  background: transparent;
+  backdrop-filter: none;
+  color: #2c2c2c;
 }
 
 .config-header,
@@ -807,6 +840,10 @@ button:disabled {
   color: var(--text-color);
   flex: 1;
   text-align: center;
+}
+
+#config-screen .config-header h2 {
+  color: #2c2c2c;
 }
 
 .back-home-btn,
@@ -838,6 +875,12 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+#config-screen .config-section label,
+#config-screen .config-section span,
+#config-screen .mode-options label {
+  color: #2c2c2c;
+}
+
 .mode-options {
   display: flex;
   gap: 12px;
@@ -852,6 +895,17 @@ button:disabled {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+#config-screen input,
+#config-screen select {
+  color: #2c2c2c;
+}
+
+.config-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .interval-inputs {
