@@ -362,24 +362,20 @@ button:disabled {
   .home-container {
     width: 100%;
     max-width: 1120px;
-    display: grid;
-    grid-template-columns: minmax(360px, 520px) minmax(110px, 140px);
-    grid-template-rows: auto minmax(0, 1fr);
-    column-gap: 56px;
-    row-gap: 36px;
-    justify-content: center;
-    align-items: start;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
   }
 
   .home-card {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: center;
+    width: 100%;
     max-width: 540px;
     padding: 64px 56px 54px;
     border-radius: 40px;
     box-shadow: 0 28px 46px rgba(0, 0, 0, 0.18);
+    margin: 0 auto;
   }
 
   .home-card::after {
@@ -415,23 +411,26 @@ button:disabled {
 
   .home-bottom-row {
     width: 100%;
-    display: contents;
+    display: grid;
+    grid-template-columns: minmax(360px, 520px) minmax(100px, 130px);
+    column-gap: 52px;
+    justify-content: center;
+    align-items: stretch;
+    margin: 0 auto;
+    max-width: calc(520px + 130px + 52px);
   }
 
   .home-buttons {
-    grid-column: 1;
-    grid-row: 2;
     width: 100%;
-    align-self: stretch;
-    height: 100%;
     display: flex;
     flex-direction: column;
     gap: 18px;
-    max-width: 500px;
+    max-width: 520px;
     margin: 0 auto;
     align-items: stretch;
-    justify-content: center;
+    justify-content: flex-start;
     justify-self: center;
+    align-self: stretch;
     text-align: center;
   }
 
@@ -454,9 +453,8 @@ button:disabled {
 
   #assistant-panel {
     grid-column: 2;
-    grid-row: 2;
     width: 100%;
-    max-width: 130px;
+    max-width: 120px;
     background: rgba(255, 255, 255, 0.92);
     border-radius: 34px;
     padding: 18px 16px 24px;
@@ -468,7 +466,7 @@ button:disabled {
     gap: 18px;
     overflow-x: auto;
     overflow-y: auto;
-    height: 100%;
+    min-height: 100%;
   }
 
   .assistant-card {
