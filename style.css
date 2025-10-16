@@ -305,6 +305,11 @@ button:disabled {
 }
 
 @media (min-width: 768px) {
+  :root {
+    --assistant-rail-width: 110px;
+    --assistant-rail-gap: 40px;
+  }
+
   body {
     display: flex;
     justify-content: center;
@@ -412,20 +417,20 @@ button:disabled {
   .home-bottom-row {
     width: 100%;
     display: grid;
-    grid-template-columns: minmax(360px, 520px) minmax(100px, 130px);
-    column-gap: 52px;
-    justify-content: center;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--assistant-rail-gap);
     align-items: stretch;
     margin: 0 auto;
-    max-width: calc(520px + 130px + 52px);
+    max-width: 1120px;
+    padding-left: calc(var(--assistant-rail-gap) + var(--assistant-rail-width));
   }
 
   .home-buttons {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    max-width: 520px;
+    gap: 16px;
+    max-width: 440px;
     margin: 0 auto;
     align-items: stretch;
     justify-content: flex-start;
@@ -435,16 +440,16 @@ button:disabled {
   }
 
   .home-buttons button {
-    font-size: 22px;
-    padding: 20px 24px;
-    border-radius: 30px;
+    font-size: 20px;
+    padding: 18px 22px;
+    border-radius: 28px;
     box-shadow: 0 18px 28px rgba(0, 0, 0, 0.14);
   }
 
   #home-tables-btn,
   #home-progress-btn {
-    font-size: 22px;
-    padding: 20px 24px;
+    font-size: 20px;
+    padding: 18px 22px;
   }
 
   .home-buttons button:active {
@@ -452,15 +457,14 @@ button:disabled {
   }
 
   #assistant-panel {
-    grid-column: 2;
-    width: 100%;
-    max-width: 120px;
+    width: var(--assistant-rail-width);
+    max-width: none;
     background: rgba(255, 255, 255, 0.92);
     border-radius: 34px;
     padding: 18px 16px 24px;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.16);
-    align-self: stretch;
     justify-self: end;
+    align-self: stretch;
     display: flex;
     flex-direction: column;
     gap: 18px;
