@@ -1992,6 +1992,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function showTablesScreen() {
     tablesContainer.innerHTML = '';
+    const factorLimit = Math.max(config.max, config.min, 1);
     for (let n = config.min; n <= config.max; n++) {
       const card = document.createElement('div');
       card.className = 'table-card';
@@ -2030,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Contenedor para filas de tabla
       const rowsContainer = document.createElement('div');
       rowsContainer.className = 'table-rows';
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= factorLimit; i++) {
         const row = document.createElement('div');
         row.className = 'table-row';
         const span = document.createElement('span');
