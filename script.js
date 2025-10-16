@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Almacena la lista de problemas del entrenamiento específico actual (si existe)
   let currentSpecificProblems = null;
+  let tablesRenderHandle = null;
 
   // Configuración por defecto y estadísticas
   const defaultConfig = {
@@ -871,43 +872,26 @@ document.addEventListener('DOMContentLoaded', () => {
    * Muestra u oculta las casillas de selección y el botón de inicio según el estado del interruptor.
    */
   function updateSpecificUI() {
-    const masters = tablesContainer.querySelectorAll('.master-checkbox');
-    const rows = tablesContainer.querySelectorAll('.row-checkbox');
-    if (!specificToggle) return;
-    if (specificToggle.checked) {
-      // Mostrar botón para iniciar entrenamiento específico
-      startSpecificBtn.classList.remove('hidden');
-      // Mostrar y habilitar casillas maestras
-      masters.forEach((cb) => {
-        cb.style.display = 'inline-block';
-        cb.disabled = false;
-      });
-      // Mostrar filas; su habilitación dependerá de la casilla maestra
-      rows.forEach((cb) => {
-        cb.style.display = 'inline-block';
-        const table = parseInt(cb.dataset.table, 10);
-        const master = tablesContainer.querySelector(
-          `.master-checkbox[data-table="${table}"]`
-        );
-        // Deshabilita la casilla si la maestra no está marcada
-        cb.disabled = !master.checked;
-        // No modificar cb.checked aquí para preservar selección individual
-      });
-    } else {
-      // Ocultar botón
-      startSpecificBtn.classList.add('hidden');
-      // Ocultar y deshabilitar todas las casillas y reiniciar selección
-      masters.forEach((cb) => {
-        cb.style.display = 'none';
-        cb.disabled = true;
-        cb.checked = false;
-      });
-      rows.forEach((cb) => {
-        cb.style.display = 'none';
-        cb.disabled = true;
-        cb.checked = false;
-      });
+    if (!specificToggle || !tablesContainer || !startSpecificBtn) return;
+    const enabled = specificToggle.checked;
+    startSpecificBtn.classList.toggle('hidden', !enabled);
+    tablesContainer.classList.toggle('specific-mode', enabled);
+
+    if (!tablesContainer.childElementCount) {
+      return;
     }
+
+    const masters = tablesContainer.querySelectorAll('.master-checkbox');
+    masters.forEach((master) => {
+      master.disabled = !enabled;
+      if (!enabled && master.checked) {
+        master.checked = false;
+      }
+      const card = master.closest('.table-card');
+      if (card) {
+        syncRowsForMaster(master, card);
+      }
+    });
   }
 
   /**
@@ -1987,101 +1971,149 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTrainingProblem();
   }
 
+  function syncRowsForMaster(masterCheckbox, card) {
+    const rows = card.querySelectorAll('.row-checkbox');
+    const shouldEnable =
+      specificToggle && specificToggle.checked && masterCheckbox.checked && !masterCheckbox.disabled;
+    rows.forEach((rowCb) => {
+      rowCb.disabled = !shouldEnable;
+      rowCb.checked = shouldEnable;
+    });
+  }
+
+  function createTableCard(tableValue, factorLimit) {
+    const card = document.createElement('div');
+    card.className = 'table-card';
+    card.dataset.table = String(tableValue);
+
+    const header = document.createElement('div');
+    header.className = 'table-header';
+
+    const title = document.createElement('h3');
+    title.textContent =
+      config.operation === 'multiplication' ? `Tabla del ${tableValue}` : `Dividir por ${tableValue}`;
+    header.appendChild(title);
+
+    const master = document.createElement('input');
+    master.type = 'checkbox';
+    master.className = 'master-checkbox';
+    master.dataset.table = String(tableValue);
+    master.disabled = !(specificToggle && specificToggle.checked);
+    header.appendChild(master);
+
+    header.addEventListener('click', (event) => {
+      if (event.target === master) {
+        return;
+      }
+      event.preventDefault();
+      master.checked = !master.checked;
+      syncRowsForMaster(master, card);
+    });
+
+    master.addEventListener('change', () => {
+      syncRowsForMaster(master, card);
+    });
+
+    const rowsContainer = document.createElement('div');
+    rowsContainer.className = 'table-rows';
+    rowsContainer.dataset.table = String(tableValue);
+
+    const rowsFragment = document.createDocumentFragment();
+    for (let factor = 1; factor <= factorLimit; factor++) {
+      const row = document.createElement('div');
+      row.className = 'table-row';
+      row.dataset.factor = String(factor);
+
+      const span = document.createElement('span');
+      if (config.operation === 'multiplication') {
+        span.textContent = `${tableValue} × ${factor} = ${tableValue * factor}`;
+      } else {
+        const dividend = tableValue * factor;
+        span.textContent = `${dividend} ÷ ${tableValue} = ${factor}`;
+      }
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'row-checkbox';
+      checkbox.dataset.table = String(tableValue);
+      checkbox.dataset.factor = String(factor);
+      checkbox.disabled = true;
+
+      row.appendChild(span);
+      row.appendChild(checkbox);
+      rowsFragment.appendChild(row);
+    }
+    rowsContainer.appendChild(rowsFragment);
+
+    rowsContainer.addEventListener('click', (event) => {
+      const row = event.target.closest('.table-row');
+      if (!row) return;
+      const checkbox = row.querySelector('.row-checkbox');
+      if (!checkbox || checkbox.disabled || event.target === checkbox) {
+        return;
+      }
+      checkbox.checked = !checkbox.checked;
+    });
+
+    card.appendChild(header);
+    card.appendChild(rowsContainer);
+
+    syncRowsForMaster(master, card);
+
+    return card;
+  }
+
   /**
    * Construir y mostrar tablas según la configuración.
    */
   function showTablesScreen() {
-    tablesContainer.innerHTML = '';
-    const factorLimit = Math.max(config.max, config.min, 1);
-    for (let n = config.min; n <= config.max; n++) {
-      const card = document.createElement('div');
-      card.className = 'table-card';
-      // Cabecera con título y casilla maestra
-      const header = document.createElement('div');
-      header.className = 'table-header';
-      const title = document.createElement('h3');
-      if (config.operation === 'multiplication') {
-        title.textContent = `Tabla del ${n}`;
-      } else {
-        title.textContent = `Dividir por ${n}`;
-      }
-      const master = document.createElement('input');
-      master.type = 'checkbox';
-      master.className = 'master-checkbox';
-      master.dataset.table = n;
-      header.appendChild(title);
-      header.appendChild(master);
-      // Permitir que el usuario haga clic en el encabezado para alternar la selección de la casilla maestra
-      header.addEventListener('click', (e) => {
-        // Evitar que el clic en la propia casilla se maneje dos veces
-        if (e.target === master) {
-          return;
-        }
-        master.checked = !master.checked;
-        // Actualizar filas correspondientes
-        const rows = card.querySelectorAll(
-          `.row-checkbox[data-table="${n}"]`
-        );
-        rows.forEach((cb) => {
-          cb.disabled = !master.checked;
-          cb.checked = master.checked;
-        });
-      });
-      card.appendChild(header);
-      // Contenedor para filas de tabla
-      const rowsContainer = document.createElement('div');
-      rowsContainer.className = 'table-rows';
-      for (let i = 1; i <= factorLimit; i++) {
-        const row = document.createElement('div');
-        row.className = 'table-row';
-        const span = document.createElement('span');
-        if (config.operation === 'multiplication') {
-          span.textContent = `${n} × ${i} = ${n * i}`;
-        } else {
-          const dividend = n * i;
-          span.textContent = `${dividend} ÷ ${n} = ${i}`;
-        }
-        const rowCb = document.createElement('input');
-        rowCb.type = 'checkbox';
-        rowCb.className = 'row-checkbox';
-        rowCb.dataset.table = n;
-        rowCb.dataset.factor = i;
-        // Por defecto, las filas están deshabilitadas hasta que se active la maestra
-        rowCb.disabled = true;
-        // Cuando se haga clic en la fila (span), alternar la casilla si está habilitada
-        span.addEventListener('click', () => {
-          if (!rowCb.disabled) {
-            rowCb.checked = !rowCb.checked;
-          }
-        });
-        row.appendChild(span);
-        row.appendChild(rowCb);
-        rowsContainer.appendChild(row);
-      }
-      card.appendChild(rowsContainer);
-      tablesContainer.appendChild(card);
+    if (!tablesContainer) return;
+    if (tablesRenderHandle) {
+      cancelAnimationFrame(tablesRenderHandle);
+      tablesRenderHandle = null;
     }
-    // Después de construir las tablas, actualizar la interfaz del entrenamiento específico
-    updateSpecificUI();
-    // Añadir manejadores para actualizar la interfaz cuando cambien las casillas maestras
-    const masters = tablesContainer.querySelectorAll('.master-checkbox');
-    masters.forEach((master) => {
-      master.addEventListener('change', () => {
-        // Ajustar filas cuando cambie la casilla maestra
-        const table = parseInt(master.dataset.table, 10);
-        const rows = tablesContainer.querySelectorAll(
-          `.row-checkbox[data-table="${table}"]`
-        );
-        rows.forEach((cb) => {
-          cb.disabled = !master.checked;
-          if (master.checked) {
-            cb.checked = true;
-          } else {
-            cb.checked = false;
-          }
-        });
-      });
-    });
+
+    tablesContainer.innerHTML = '';
+
+    const minValue = Math.max(1, Math.min(config.min, config.max));
+    const maxValue = Math.max(1, Math.max(config.min, config.max));
+    const factorLimit = Math.max(1, maxValue);
+    const tableValues = [];
+    for (let value = minValue; value <= maxValue; value++) {
+      tableValues.push(value);
+    }
+
+    const totalTables = tableValues.length;
+    const chunkSize = totalTables > 36 ? 4 : totalTables > 18 ? 6 : 10;
+    let index = 0;
+
+    if (specificToggle && startSpecificBtn) {
+      startSpecificBtn.classList.toggle('hidden', !specificToggle.checked);
+      tablesContainer.classList.toggle('specific-mode', specificToggle.checked);
+    }
+
+    if (tableValues.length === 0) {
+      updateSpecificUI();
+      showScreen('tables');
+      return;
+    }
+
+    function renderChunk() {
+      const fragment = document.createDocumentFragment();
+      const limit = Math.min(index + chunkSize, tableValues.length);
+      for (; index < limit; index++) {
+        fragment.appendChild(createTableCard(tableValues[index], factorLimit));
+      }
+      tablesContainer.appendChild(fragment);
+      if (index < tableValues.length) {
+        tablesRenderHandle = requestAnimationFrame(renderChunk);
+      } else {
+        tablesRenderHandle = null;
+        updateSpecificUI();
+      }
+    }
+
+    renderChunk();
     showScreen('tables');
   }
 
@@ -2264,35 +2296,29 @@ document.addEventListener('DOMContentLoaded', () => {
       startSpecificBtn.addEventListener('click', () => {
         // Construir lista de problemas específicos seleccionados
         const selectedProblems = [];
-        const masters = tablesContainer.querySelectorAll('.master-checkbox');
-        masters.forEach((master) => {
-          const table = parseInt(master.dataset.table, 10);
-          if (master.checked) {
-            // Tomar todas las filas seleccionadas en esta tabla
-            const rows = tablesContainer.querySelectorAll(
-              `.row-checkbox[data-table="${table}"]`
-            );
-            rows.forEach((rowCb) => {
-              const factor = parseInt(rowCb.dataset.factor, 10);
-              if (rowCb.checked && !rowCb.disabled) {
-                if (config.operation === 'multiplication') {
-                  selectedProblems.push({
-                    type: 'multiplication',
-                    a: table,
-                    b: factor,
-                    answer: table * factor,
-                  });
-                } else {
-                  // division
-                  const dividend = table * factor;
-                  selectedProblems.push({
-                    type: 'division',
-                    dividend: dividend,
-                    divisor: table,
-                    answer: factor,
-                  });
-                }
-              }
+        const selectedRows = tablesContainer.querySelectorAll(
+          '.row-checkbox:not(:disabled):checked'
+        );
+        selectedRows.forEach((rowCb) => {
+          const table = parseInt(rowCb.dataset.table, 10);
+          const factor = parseInt(rowCb.dataset.factor, 10);
+          if (Number.isNaN(table) || Number.isNaN(factor)) {
+            return;
+          }
+          if (config.operation === 'multiplication') {
+            selectedProblems.push({
+              type: 'multiplication',
+              a: table,
+              b: factor,
+              answer: table * factor,
+            });
+          } else {
+            const dividend = table * factor;
+            selectedProblems.push({
+              type: 'division',
+              dividend: dividend,
+              divisor: table,
+              answer: factor,
             });
           }
         });

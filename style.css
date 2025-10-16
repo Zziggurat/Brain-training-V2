@@ -13,6 +13,7 @@
   --card-shadow: 0 24px 48px rgba(0, 0, 0, 0.16);
   --heatmap-cell-size: 72px;
   --heatmap-gap: 10px;
+  --header-button-size: 56px;
   font-size: 16px;
 }
 
@@ -347,6 +348,7 @@ button:disabled {
   :root {
     --assistant-rail-width: 110px;
     --assistant-rail-gap: 40px;
+    --header-button-size: 52px;
   }
 
   body {
@@ -666,9 +668,13 @@ button:disabled {
 .config-header,
 .progress-top-bar,
 .top-bar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  min-height: var(--header-button-size);
+  padding-left: calc(var(--header-button-size) + 12px);
 }
 
 .config-header h2,
@@ -678,12 +684,14 @@ button:disabled {
   font-size: 24px;
   font-weight: 700;
   color: var(--text-color);
+  flex: 1;
+  text-align: center;
 }
 
 .back-home-btn,
 #progress-back-btn {
-  width: 48px;
-  height: 48px;
+  width: var(--header-button-size);
+  height: var(--header-button-size);
   border-radius: 50%;
   background: var(--card-bg);
   color: var(--primary);
@@ -691,7 +699,10 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 24px;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .config-body {
@@ -1203,6 +1214,15 @@ input[type="checkbox"] {
   height: 22px;
   margin-left: auto;
   accent-color: var(--primary);
+}
+
+.tables-container:not(.specific-mode) .master-checkbox,
+.tables-container:not(.specific-mode) .row-checkbox {
+  display: none;
+}
+
+.tables-container.specific-mode .table-row {
+  cursor: pointer;
 }
 
 .table-rows {
