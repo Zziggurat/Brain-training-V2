@@ -1,7 +1,7 @@
-
 :root {
   --bg-top: #fff6b7;
   --bg-bottom: #ffd659;
+  --bg-solid: #ffd84d;
   --card-bg: #ffffff;
   --primary: #007bff;
   --primary-dark: #005ac7;
@@ -27,7 +27,7 @@ body {
 
 body {
   font-family: "Poppins", "Nunito", "Helvetica Neue", Arial, sans-serif;
-  background: linear-gradient(170deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  background: var(--bg-solid);
   color: var(--text-color);
   display: flex;
   justify-content: center;
@@ -300,7 +300,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 @media (min-width: 768px) {
@@ -308,7 +309,7 @@ button:disabled {
     display: flex;
     justify-content: center;
     align-items: stretch;
-    background: linear-gradient(160deg, #fff5b1 0%, #ffcd4d 100%);
+    background: var(--bg-solid);
     color: var(--text-color);
     padding: 48px 0;
   }
@@ -361,13 +362,10 @@ button:disabled {
   .home-container {
     width: 100%;
     display: grid;
-    grid-template-columns: minmax(360px, 460px) minmax(200px, 240px);
+    grid-template-columns: minmax(360px, 1fr) minmax(130px, 160px);
     grid-template-rows: auto auto;
-    grid-template-areas:
-      "card card"
-      "buttons assistant";
-    column-gap: 40px;
-    row-gap: 36px;
+    column-gap: 48px;
+    row-gap: 32px;
     justify-content: center;
     justify-items: center;
     align-items: start;
@@ -375,9 +373,10 @@ button:disabled {
   }
 
   .home-card {
-    grid-area: card;
+    grid-column: 1;
+    grid-row: 1;
     justify-self: center;
-    max-width: 520px;
+    max-width: 540px;
     padding: 64px 56px 54px;
     border-radius: 40px;
     box-shadow: 0 28px 46px rgba(0, 0, 0, 0.18);
@@ -420,17 +419,19 @@ button:disabled {
   }
 
   .home-buttons {
-    grid-area: buttons;
+    grid-column: 1;
+    grid-row: 2;
     width: 100%;
     align-self: start;
     display: flex;
     flex-direction: column;
     gap: 18px;
-    max-width: 420px;
+    max-width: 460px;
     margin: 0 auto;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     justify-self: center;
+    text-align: center;
   }
 
   .home-buttons button {
@@ -451,11 +452,12 @@ button:disabled {
   }
 
   #assistant-panel {
-    grid-area: assistant;
+    grid-column: 2;
+    grid-row: 2;
     max-height: none;
-    min-height: 100%;
+    min-height: 0;
     width: 100%;
-    max-width: 240px;
+    max-width: 160px;
     background: rgba(255, 255, 255, 0.92);
     border-radius: 34px;
     padding: 22px 22px 26px;
@@ -467,6 +469,8 @@ button:disabled {
     overflow-x: auto;
     overflow-y: auto;
     justify-self: end;
+    height: 100%;
+    max-height: 100%;
   }
 
   .assistant-card {
