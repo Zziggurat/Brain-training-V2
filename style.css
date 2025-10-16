@@ -650,12 +650,27 @@ button:disabled {
 }
 
 @media (max-width: 1024px) {
+  html,
   body {
+    background-color: #040714;
+    position: relative;
+  }
+
+  body {
+    background-color: #040714;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
     background-color: #040714;
     background-image: url("assets/ciudad-cyberpunk.png");
     background-size: cover;
     background-position: center bottom;
     background-repeat: no-repeat;
+    z-index: -1;
+    pointer-events: none;
   }
 
   #app {
@@ -800,6 +815,7 @@ button:disabled {
   gap: 18px;
   background: transparent;
   backdrop-filter: none;
+  color: #2c2c2c;
 }
 
 .config-header,
@@ -823,6 +839,10 @@ button:disabled {
   color: var(--text-color);
   flex: 1;
   text-align: center;
+}
+
+#config-screen .config-header h2 {
+  color: #2c2c2c;
 }
 
 .back-home-btn,
@@ -854,6 +874,12 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+#config-screen .config-section label,
+#config-screen .config-section span,
+#config-screen .mode-options label {
+  color: #2c2c2c;
+}
+
 .mode-options {
   display: flex;
   gap: 12px;
@@ -868,6 +894,11 @@ button:disabled {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+#config-screen input,
+#config-screen select {
+  color: #2c2c2c;
 }
 
 .config-footer {

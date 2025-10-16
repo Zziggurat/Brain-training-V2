@@ -221,15 +221,126 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Configuración por defecto y estadísticas
-  const defaultConfig = {
-    operation: 'multiplication',
+  const defaultModeSettings = Object.freeze({
     min: 1,
     max: 10,
     multipleChoice: false,
     numQuestions: 10,
     seconds: 30,
+  });
+
+  function cloneModeSettings(source = defaultModeSettings) {
+    return {
+      min: Number.isFinite(source.min) ? source.min : defaultModeSettings.min,
+      max: Number.isFinite(source.max) ? source.max : defaultModeSettings.max,
+      multipleChoice:
+        typeof source.multipleChoice === 'boolean'
+          ? source.multipleChoice
+          : defaultModeSettings.multipleChoice,
+      numQuestions: Number.isFinite(source.numQuestions)
+        ? source.numQuestions
+        : defaultModeSettings.numQuestions,
+      seconds: Number.isFinite(source.seconds) ? source.seconds : defaultModeSettings.seconds,
+    };
+  }
+
+  const defaultConfig = {
+    activeOperation: 'multiplication',
+    modes: {
+      multiplication: cloneModeSettings(),
+      division: cloneModeSettings(),
+    },
   };
-  let config = {};
+
+  function cloneDefaultConfig() {
+    return {
+      activeOperation: defaultConfig.activeOperation,
+      modes: {
+        multiplication: cloneModeSettings(defaultConfig.modes.multiplication),
+        division: cloneModeSettings(defaultConfig.modes.division),
+      },
+    };
+  }
+
+  function normalizeModeSettings(raw, fallback) {
+    const base = cloneModeSettings(fallback);
+    if (!raw || typeof raw !== 'object') {
+      return base;
+    }
+    const normalized = cloneModeSettings(raw);
+    normalized.min = Math.max(1, Math.floor(normalized.min));
+    normalized.max = Math.max(normalized.min, Math.floor(normalized.max));
+    normalized.numQuestions = Math.max(1, Math.floor(normalized.numQuestions));
+    normalized.seconds = Math.max(1, Math.floor(normalized.seconds));
+    return normalized;
+  }
+
+  function normalizeConfigShape(raw) {
+    const base = cloneDefaultConfig();
+    if (!raw || typeof raw !== 'object') {
+      return base;
+    }
+
+    if (raw.modes && typeof raw.modes === 'object') {
+      const active = raw.activeOperation === 'division' ? 'division' : 'multiplication';
+      return {
+        activeOperation: active,
+        modes: {
+          multiplication: normalizeModeSettings(
+            raw.modes.multiplication,
+            base.modes.multiplication,
+          ),
+          division: normalizeModeSettings(raw.modes.division, base.modes.division),
+        },
+      };
+    }
+
+    // Compatibilidad con configuraciones antiguas (un solo conjunto de valores)
+    const legacyOperation = raw.operation === 'division' ? 'division' : 'multiplication';
+    const legacySettings = normalizeModeSettings(raw, base.modes[legacyOperation]);
+    const otherOperation = legacyOperation === 'multiplication' ? 'division' : 'multiplication';
+    return {
+      activeOperation: legacyOperation,
+      modes: {
+        [legacyOperation]: legacySettings,
+        [otherOperation]: base.modes[otherOperation],
+      },
+    };
+  }
+
+  function getModeConfig(operation) {
+    if (!config || typeof config !== 'object') {
+      config = cloneDefaultConfig();
+    }
+    if (!config.modes) {
+      config.modes = cloneDefaultConfig().modes;
+    }
+    const op = operation === 'division' ? 'division' : 'multiplication';
+    if (!config.modes[op]) {
+      config.modes[op] = cloneModeSettings();
+    }
+    return config.modes[op];
+  }
+
+  function getActiveOperation() {
+    return config && config.activeOperation === 'division' ? 'division' : 'multiplication';
+  }
+
+  function setActiveOperation(operation) {
+    const op = operation === 'division' ? 'division' : 'multiplication';
+    if (!config) {
+      config = cloneDefaultConfig();
+    }
+    config.activeOperation = op;
+    // Asegurar que exista configuración para el modo seleccionado
+    getModeConfig(op);
+  }
+
+  function getActiveModeConfig() {
+    return getModeConfig(getActiveOperation());
+  }
+
+  let config = cloneDefaultConfig();
 
   const defaultStats = {
     totalCorrect: 0,
@@ -782,14 +893,14 @@ document.addEventListener('DOMContentLoaded', () => {
    * El progreso sólo se basa en el modo de operación actual.
    */
   function calculateProgress() {
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     const totalCombos = (max - min + 1) * (max - min + 1);
     const totalPossibleStars = totalCombos * 5;
     let earnedStars = 0;
     for (let a = min; a <= max; a++) {
       for (let b = min; b <= max; b++) {
-        if (config.operation === 'multiplication') {
+        if (operation === 'multiplication') {
           const key = createProblemKey({ type: 'multiplication', a, b });
           earnedStars += stars[key] || 0;
         } else {
@@ -933,8 +1044,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function buildHeatmap() {
     if (!heatmapContainer) return;
     heatmapContainer.innerHTML = '';
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     const size = max - min + 1;
     const grid = document.createElement('div');
     grid.className = 'heatmap-grid';
@@ -971,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
       grid.appendChild(rowHeader);
       for (let b = min; b <= max; b++) {
         const key = createProblemKey(
-          config.operation === 'multiplication'
+          operation === 'multiplication'
             ? { type: 'multiplication', a, b }
             : { type: 'division', dividend: a * b, divisor: a }
         );
@@ -991,7 +1102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Al hacer clic sobre una celda, mostrar la operación y su resultado en la tarjeta de resultado
         cell.addEventListener('click', () => {
           let resultText;
-          if (config.operation === 'multiplication') {
+          if (operation === 'multiplication') {
             resultText = `${a} × ${b} = ${a * b}`;
           } else {
             const dividend = a * b;
@@ -1043,9 +1154,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function computeRecommendations() {
-    const min = config.min;
-    const max = config.max;
-    const operation = config.operation;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     const now = Date.now();
     const today = getTodayDate();
 
@@ -1285,10 +1395,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function startSpecificColumnTraining(b) {
     const problems = [];
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     for (let a = min; a <= max; a++) {
-      if (config.operation === 'multiplication') {
+      if (operation === 'multiplication') {
         problems.push({ type: 'multiplication', a, b, answer: a * b });
       } else {
         const dividend = a * b;
@@ -1305,10 +1415,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function startSpecificRowTraining(a) {
     const problems = [];
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     for (let b = min; b <= max; b++) {
-      if (config.operation === 'multiplication') {
+      if (operation === 'multiplication') {
         problems.push({ type: 'multiplication', a, b, answer: a * b });
       } else {
         const dividend = a * b;
@@ -1326,7 +1436,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function startSpecificProblemTraining(a, b) {
     let problem;
-    if (config.operation === 'multiplication') {
+    if (getActiveOperation() === 'multiplication') {
       problem = { type: 'multiplication', a, b, answer: a * b };
     } else {
       const dividend = a * b;
@@ -1396,25 +1506,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const saved = localStorage.getItem('config');
     if (saved) {
       try {
-        config = Object.assign({}, defaultConfig, JSON.parse(saved));
+        config = normalizeConfigShape(JSON.parse(saved));
       } catch (e) {
-        config = Object.assign({}, defaultConfig);
+        config = cloneDefaultConfig();
       }
     } else {
-      config = Object.assign({}, defaultConfig);
+      config = cloneDefaultConfig();
     }
     // Actualizar UI
-    operationRadios.forEach((radio) => {
-      radio.checked = radio.value === config.operation;
-    });
-    configMinInput.value = config.min;
-    configMaxInput.value = config.max;
-    configMultipleChoice.checked = config.multipleChoice;
-    configNumQuestionsSelect.value = config.numQuestions;
-    configSecondsInput.value = config.seconds;
+    const activeOperation = getActiveOperation();
+    syncOperationRadios(activeOperation);
+    fillConfigInputs(activeOperation);
 
     // Actualizar botones de operación en inicio
     updateHomeOperationToggle();
+  }
+
+  function syncOperationRadios(operation) {
+    operationRadios.forEach((radio) => {
+      radio.checked = radio.value === operation;
+    });
+  }
+
+  function fillConfigInputs(operation) {
+    const modeConfig = getModeConfig(operation);
+    configMinInput.value = modeConfig.min;
+    configMaxInput.value = modeConfig.max;
+    configMultipleChoice.checked = modeConfig.multipleChoice;
+    configNumQuestionsSelect.value = modeConfig.numQuestions;
+    configSecondsInput.value = modeConfig.seconds;
   }
 
   /**
@@ -1441,15 +1561,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    config = {
-      operation: selectedOperation,
-      min: minVal,
-      max: maxVal,
-      multipleChoice: mcVal,
-      numQuestions: numQVal,
-      seconds: secondsVal,
-    };
+    setActiveOperation(selectedOperation);
+    const modeConfig = getModeConfig(selectedOperation);
+    modeConfig.min = minVal;
+    modeConfig.max = maxVal;
+    modeConfig.multipleChoice = mcVal;
+    modeConfig.numQuestions = numQVal;
+    modeConfig.seconds = secondsVal;
+    config.activeOperation = selectedOperation;
     localStorage.setItem('config', JSON.stringify(config));
+    fillConfigInputs(selectedOperation);
     // Actualizar botones de operación en inicio
     updateHomeOperationToggle();
     showScreen('home');
@@ -1459,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Actualizar el estado visual de los botones de operación en la pantalla de inicio
    */
   function updateHomeOperationToggle() {
-    if (config.operation === 'multiplication') {
+    if (getActiveOperation() === 'multiplication') {
       homeOpMulBtn.classList.add('active');
       homeOpDivBtn.classList.remove('active');
     } else {
@@ -1551,16 +1672,19 @@ document.addEventListener('DOMContentLoaded', () => {
      * una distribución más uniforme y evita repeticiones consecutivas.
      */
     // Construir lista de problemas ponderada en función del número de estrellas y los tiempos de repaso.
+    const activeSettings = getActiveModeConfig();
+    const operation = getActiveOperation();
+    const { min, max, numQuestions } = activeSettings;
     const base = [];
-    if (config.operation === 'multiplication') {
-      for (let a = config.min; a <= config.max; a++) {
-        for (let b = config.min; b <= config.max; b++) {
+    if (operation === 'multiplication') {
+      for (let a = min; a <= max; a++) {
+        for (let b = min; b <= max; b++) {
           base.push({ type: 'multiplication', a, b, answer: a * b });
         }
       }
     } else {
-      for (let divisor = config.min; divisor <= config.max; divisor++) {
-        for (let quotient = config.min; quotient <= config.max; quotient++) {
+      for (let divisor = min; divisor <= max; divisor++) {
+        for (let quotient = min; quotient <= max; quotient++) {
           const dividend = divisor * quotient;
           base.push({ type: 'division', dividend, divisor, answer: quotient });
         }
@@ -1584,7 +1708,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let poolIndex = 0;
     const list = [];
     let last = null;
-    for (let i = 0; i < config.numQuestions; i++) {
+    for (let i = 0; i < numQuestions; i++) {
       // Si agotamos la piscina, barajar de nuevo y evitar iniciar con el mismo problema que el último
       if (poolIndex >= pool.length) {
         let attempts = 0;
@@ -1598,7 +1722,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       let problem = pool[poolIndex];
       // Evitar que se repita el mismo problema o la misma tabla consecutivamente
-      if (weighted.length > 1 && last !== null && (isSameProblem(problem, last) || hasSameFactor(problem, last))) {
+      if (
+        weighted.length > 1 &&
+        last !== null &&
+        (isSameProblem(problem, last) || hasSameFactor(problem, last))
+      ) {
         for (let j = 1; j < pool.length; j++) {
           const candidate = pool[(poolIndex + j) % pool.length];
           if (!isSameProblem(candidate, last) && !hasSameFactor(candidate, last)) {
@@ -1681,7 +1809,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let pool = shuffleArray([...weightedSel]);
     let poolIndex = 0;
     let last = null;
-    for (let i = 0; i < config.numQuestions; i++) {
+    const { numQuestions } = getActiveModeConfig();
+    for (let i = 0; i < numQuestions; i++) {
       if (poolIndex >= pool.length) {
         let attempts = 0;
         let newPool;
@@ -1889,7 +2018,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const problem = learnProblems[learnIndex];
     // Reiniciar bandera de intento incorrecto para este problema
     learningHasWrongAttempt = false;
-    learnProgressSpan.textContent = `${learnIndex + 1}/${config.numQuestions}`;
+    const { numQuestions, multipleChoice } = getActiveModeConfig();
+    learnProgressSpan.textContent = `${learnIndex + 1}/${numQuestions}`;
     if (problem.type === 'multiplication') {
       learnProblemDiv.textContent = `${problem.a} × ${problem.b} = ?`;
     } else {
@@ -1910,7 +2040,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Registrar momento de inicio de la pregunta para métricas
     learnQuestionStartTime = Date.now();
 
-    if (config.multipleChoice) {
+    if (multipleChoice) {
       // Generar y mostrar opciones
       const options = generateOptions(problem);
       options.forEach((value) => {
@@ -2153,12 +2283,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (learnSkipBtn) {
       learnSkipBtn.style.display = 'none';
     }
-    if (learnIndex < config.numQuestions - 1) {
+    const { numQuestions } = getActiveModeConfig();
+    if (learnIndex < numQuestions - 1) {
       learnIndex++;
       renderLearningProblem();
     } else {
       // Mostrar resumen y volver a inicio tras una pausa
-      learnFeedbackDiv.textContent = `Respuestas correctas: ${learnCorrectCount} de ${config.numQuestions}`;
+      learnFeedbackDiv.textContent = `Respuestas correctas: ${learnCorrectCount} de ${numQuestions}`;
       learnFeedbackDiv.style.color = '#2c3e50';
       learnNextBtn.classList.add('hidden');
       setTimeout(() => {
@@ -2187,6 +2318,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderTrainingProblem() {
     const problem = trainProblems[trainIndex];
+    const { multipleChoice } = getActiveModeConfig();
     // Mostrar progreso basado en la longitud actual de la lista de problemas
     trainProgressSpan.textContent = `${trainIndex + 1}/${trainProblems.length}`;
     if (problem.type === 'multiplication') {
@@ -2214,7 +2346,7 @@ document.addEventListener('DOMContentLoaded', () => {
       startTrainTimer();
     }
 
-    if (config.multipleChoice) {
+    if (multipleChoice) {
       const options = generateOptions(problem);
       options.forEach((value) => {
         const btn = document.createElement('button');
@@ -2283,8 +2415,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
     }
-    trainTimeRemaining = config.seconds;
-    trainTotalSeconds = config.seconds;
+    const { seconds } = getActiveModeConfig();
+    trainTimeRemaining = seconds;
+    trainTotalSeconds = seconds;
     trainTimerFill.style.width = '100%';
     trainTimer = setInterval(() => {
       trainTimeRemaining -= 0.1;
@@ -2553,7 +2686,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return rowsContainer;
     }
 
-    const operation = card.dataset.operation || config.operation || 'multiplication';
+    const operation = card.dataset.operation || getActiveOperation() || 'multiplication';
     const fragment = document.createDocumentFragment();
     for (let factor = 1; factor <= factorLimit; factor++) {
       const row = document.createElement('div');
@@ -2631,7 +2764,8 @@ document.addEventListener('DOMContentLoaded', () => {
     card.className = 'table-card';
     card.dataset.table = String(tableValue);
     card.dataset.factorLimit = String(factorLimit);
-    card.dataset.operation = config.operation;
+    const operation = getActiveOperation();
+    card.dataset.operation = operation;
     card.dataset.rendered = 'false';
 
     const header = document.createElement('div');
@@ -2639,7 +2773,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const title = document.createElement('h3');
     title.textContent =
-      config.operation === 'multiplication' ? `Tabla del ${tableValue}` : `Dividir por ${tableValue}`;
+      operation === 'multiplication' ? `Tabla del ${tableValue}` : `Dividir por ${tableValue}`;
     header.appendChild(title);
 
     const master = document.createElement('input');
@@ -2696,8 +2830,9 @@ document.addEventListener('DOMContentLoaded', () => {
     tablesContainer.innerHTML = '';
     tablesContainer.scrollTop = 0;
 
-    const minValue = Math.max(1, Math.min(config.min, config.max));
-    const maxValue = Math.max(1, Math.max(config.min, config.max));
+    const { min, max } = getActiveModeConfig();
+    const minValue = Math.max(1, Math.min(min, max));
+    const maxValue = Math.max(1, Math.max(min, max));
     const factorLimit = Math.max(1, maxValue);
     const tableValues = [];
     for (let value = minValue; value <= maxValue; value++) {
@@ -2812,16 +2947,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    operationRadios.forEach((radio) => {
+      radio.addEventListener('change', () => {
+        if (radio.checked) {
+          fillConfigInputs(radio.value);
+        }
+      });
+    });
+
     // Botones de operación en la pantalla de inicio
     homeOpMulBtn.addEventListener('click', () => {
-      config.operation = 'multiplication';
+      setActiveOperation('multiplication');
       localStorage.setItem('config', JSON.stringify(config));
       updateHomeOperationToggle();
+      updateProgressBar();
     });
     homeOpDivBtn.addEventListener('click', () => {
-      config.operation = 'division';
+      setActiveOperation('division');
       localStorage.setItem('config', JSON.stringify(config));
       updateHomeOperationToggle();
+      updateProgressBar();
     });
     // Botones de configuración
     configBackBtn.addEventListener('click', () => {
@@ -2969,13 +3114,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedRows = tablesContainer.querySelectorAll(
           '.row-checkbox:not(:disabled):checked'
         );
+        const operation = getActiveOperation();
         selectedRows.forEach((rowCb) => {
           const table = parseInt(rowCb.dataset.table, 10);
           const factor = parseInt(rowCb.dataset.factor, 10);
           if (Number.isNaN(table) || Number.isNaN(factor)) {
             return;
           }
-          if (config.operation === 'multiplication') {
+          if (operation === 'multiplication') {
             selectedProblems.push({
               type: 'multiplication',
               a: table,
