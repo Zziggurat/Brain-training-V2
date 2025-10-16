@@ -699,40 +699,48 @@ button:disabled {
     gap: 12px;
   }
 
-  .problem-card {
+  #learning-screen .problem-card,
+  #training-screen .problem-card {
     padding: 10px 16px;
     border-radius: 20px;
     margin-bottom: 0;
   }
 
-  .card-front {
+  #learning-screen .problem-card .card-front,
+  #training-screen .problem-card .card-front {
     min-height: unset;
+    padding: 8px 0;
     gap: 4px;
   }
 
-  .card-front > *:first-child {
+  #learning-screen .problem-card .card-front > *:first-child,
+  #training-screen .problem-card .card-front > *:first-child {
     margin-top: 0;
   }
 
-  .card-front > *:last-child {
+  #learning-screen .problem-card .card-front > *:last-child,
+  #training-screen .problem-card .card-front > *:last-child {
     margin-bottom: 0;
   }
 
-  .stars {
+  #learning-screen .stars {
     font-size: 24px;
   }
 
-  .problem {
+  #learning-screen .problem,
+  #training-screen .problem {
     font-size: 42px;
     line-height: 1.05;
   }
 
-  .answer-area {
+  #learning-screen .answer-area,
+  #training-screen .answer-area {
     gap: 8px;
     align-items: stretch;
   }
 
-  .numeric-display {
+  #learning-screen .numeric-display,
+  #training-screen .numeric-display {
     min-height: 36px;
     padding: 4px 12px;
     border-radius: 20px;
@@ -740,20 +748,23 @@ button:disabled {
     font-size: 28px;
   }
 
-  .num-keypad {
+  #learning-screen .num-keypad,
+  #training-screen .num-keypad {
     gap: 8px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     transform: translateX(-16px);
   }
 
-  .num-btn {
+  #learning-screen .num-btn,
+  #training-screen .num-btn {
     min-height: 54px;
     padding: 12px 0;
     font-size: 24px;
     border-radius: 18px;
   }
 
-  .delete-btn {
+  #learning-screen .delete-btn,
+  #training-screen .delete-btn {
     font-size: 32px;
   }
 
