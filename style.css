@@ -700,14 +700,23 @@ button:disabled {
   }
 
   .problem-card {
-    padding: 14px 16px;
+    padding: 20px 16px;
     border-radius: 22px;
     margin-bottom: 0;
   }
 
-  .card-front {
-    min-height: 96px;
-    gap: 6px;
+  .problem-card .card-front {
+    min-height: unset;
+    padding: 6px 0;
+    gap: 8px;
+  }
+
+  .problem-card .card-front > *:first-child {
+    margin-top: 0;
+  }
+
+  .problem-card .card-front > *:last-child {
+    margin-bottom: 0;
   }
 
   .stars {
