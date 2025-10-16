@@ -679,17 +679,19 @@ button:disabled {
   #home-screen,
   #learning-screen,
   #training-screen {
-    padding: calc(env(safe-area-inset-top, 0px) + 22px) 16px
-      calc(env(safe-area-inset-bottom, 0px) + 28px);
+    padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px
+      calc(env(safe-area-inset-bottom, 0px) + 24px);
   }
 
   #home-screen {
     gap: 22px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   #learning-screen,
   #training-screen {
-    gap: 20px;
+    gap: 16px;
   }
 
   #learning-screen .top-bar,
@@ -698,14 +700,14 @@ button:disabled {
   }
 
   .problem-card {
-    padding: 32px 24px;
-    border-radius: 26px;
-    margin-bottom: 8px;
+    padding: 26px 22px;
+    border-radius: 24px;
+    margin-bottom: 4px;
   }
 
   .card-front {
-    min-height: 180px;
-    gap: 16px;
+    min-height: 164px;
+    gap: 12px;
   }
 
   .stars {
@@ -713,36 +715,43 @@ button:disabled {
   }
 
   .problem {
-    font-size: 48px;
+    font-size: 44px;
   }
 
   .answer-area {
-    gap: 12px;
+    gap: 10px;
+    align-items: stretch;
   }
 
   .numeric-display {
-    min-height: 60px;
-    padding: 12px 16px;
-    border-radius: 24px;
-    letter-spacing: 1.5px;
-    font-size: 32px;
+    min-height: 54px;
+    padding: 10px 14px;
+    border-radius: 22px;
+    letter-spacing: 1.2px;
+    font-size: 30px;
   }
 
   .num-keypad {
-    gap: 12px;
+    gap: 10px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    transform: translateX(-4px);
+    transform: translateX(-12px);
   }
 
   .num-btn {
-    min-height: 62px;
-    padding: 14px 0;
-    font-size: 26px;
-    border-radius: 22px;
+    min-height: 56px;
+    padding: 12px 0;
+    font-size: 24px;
+    border-radius: 20px;
   }
 
   .delete-btn {
     font-size: 32px;
+  }
+
+  #learn-feedback,
+  #train-feedback,
+  #train-score {
+    margin-top: 4px;
   }
 }
 
