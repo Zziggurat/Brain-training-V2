@@ -649,6 +649,22 @@ button:disabled {
   }
 }
 
+@media (max-width: 1024px) {
+  body {
+    background-color: #040714;
+    background-image: url("assets/ciudad-cyberpunk.png");
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+  }
+
+  #app {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 .assistant-card {
   background: var(--card-bg);
   border-radius: 18px;
