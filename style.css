@@ -798,8 +798,8 @@ button:disabled {
 /* --- Configuración --- */
 #config-screen {
   gap: 18px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .config-header,
@@ -868,6 +868,12 @@ button:disabled {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.config-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .interval-inputs {
