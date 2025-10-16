@@ -499,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Construir el mapa de calor para el progreso.
    * Muestra una cuadrícula de (max-min+1)×(max-min+1) donde cada celda
-   * se colorea según las estrellas acumuladas (gris, naranja, verde).
+   * se colorea según las estrellas acumuladas (blanco, naranja, verde).
    */
   function buildHeatmap() {
     if (!heatmapContainer) return;
@@ -509,9 +509,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const size = max - min + 1;
     const grid = document.createElement('div');
     grid.className = 'heatmap-grid';
-    // Definir ancho de columna constante para todas las celdas, incluidas las cabeceras
-    // Definimos columnas de 28px para cada celda y su encabezado.
-    grid.style.gridTemplateColumns = `repeat(${size + 1}, 28px)`;
+    // Definir ancho y alto constantes para todas las celdas, incluidas las cabeceras.
+    grid.style.gridTemplateColumns = `repeat(${size + 1}, var(--heatmap-cell-size))`;
+    grid.style.gridAutoRows = 'var(--heatmap-cell-size)';
     // Primera celda vacía en la esquina superior izquierda
     const corner = document.createElement('div');
     corner.className = 'heatmap-header corner-header';
@@ -549,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const count = stars[key] || 0;
         const cell = document.createElement('div');
         cell.className = 'heatmap-cell';
-        // Asignar color según estrellas: 0–1 gris, 2–3 naranja, 4–5 verde
+        // Asignar color según estrellas: 0–1 blanco, 2–3 naranja, 4–5 verde
         if (count <= 1) {
           cell.classList.add('heatmap-grey');
         } else if (count <= 3) {
@@ -2029,6 +2029,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.appendChild(header);
       // Contenedor para filas de tabla
       const rowsContainer = document.createElement('div');
+      rowsContainer.className = 'table-rows';
       for (let i = 1; i <= 10; i++) {
         const row = document.createElement('div');
         row.className = 'table-row';
