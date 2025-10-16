@@ -299,9 +299,12 @@ button:disabled {
   box-shadow: 0 20px 38px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 14px;
   overflow-x: auto;
   overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
 }
 
 @media (min-width: 768px) {
@@ -465,12 +468,36 @@ button:disabled {
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.16);
     justify-self: end;
     align-self: stretch;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-auto-rows: min-content;
+    align-content: flex-start;
     gap: 18px;
     overflow-x: auto;
     overflow-y: auto;
+    scrollbar-gutter: stable both-edges;
+    overscroll-behavior: contain;
     min-height: 100%;
+    padding-right: 22px;
+  }
+
+  #assistant-panel::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  #assistant-panel::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 999px;
+  }
+
+  #assistant-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  #assistant-panel .assistant-card {
+    width: max-content;
+    min-width: 220px;
+    max-width: 320px;
   }
 
   .assistant-card {
@@ -495,6 +522,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 100%;
+  min-width: 0;
 }
 
 .assistant-card h4 {
