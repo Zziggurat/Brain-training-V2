@@ -102,6 +102,101 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSpecificProblems = null;
   let tablesRenderHandle = null;
   let tableCardObserver = null;
+  const rowResetQueue = [];
+  let rowResetHandle = null;
+
+  function scheduleRowResetProcessing() {
+    if (rowResetHandle !== null) {
+      return;
+    }
+    const win = typeof window !== 'undefined' ? window : null;
+    if (win && typeof win.requestIdleCallback === 'function') {
+      rowResetHandle = win.requestIdleCallback((deadline) => {
+        rowResetHandle = null;
+        processRowResetQueue(deadline);
+      });
+      return;
+    }
+    if (win && typeof win.requestAnimationFrame === 'function') {
+      rowResetHandle = win.requestAnimationFrame(() => {
+        rowResetHandle = null;
+        processRowResetQueue();
+      });
+      return;
+    }
+    rowResetHandle = setTimeout(() => {
+      rowResetHandle = null;
+      processRowResetQueue();
+    }, 16);
+  }
+
+  function processRowResetQueue(deadline) {
+    const useIdle = deadline && typeof deadline.timeRemaining === 'function';
+    const batchSize = 2;
+    let processed = 0;
+
+    while (rowResetQueue.length > 0) {
+      if (useIdle && deadline.timeRemaining() <= 0) {
+        break;
+      }
+      if (!useIdle && processed >= batchSize) {
+        break;
+      }
+
+      const card = rowResetQueue.shift();
+      if (!card || card.dataset.rendered !== 'true') {
+        processed += 1;
+        continue;
+      }
+
+      const rowsContainer = card.querySelector('.table-rows');
+      if (!rowsContainer) {
+        processed += 1;
+        continue;
+      }
+
+      const checkboxes = rowsContainer.querySelectorAll('.row-checkbox');
+      if (!checkboxes.length) {
+        processed += 1;
+        continue;
+      }
+
+      checkboxes.forEach((rowCb) => {
+        if (!rowCb.disabled) {
+          rowCb.disabled = true;
+        }
+        if (rowCb.checked) {
+          rowCb.checked = false;
+        }
+      });
+
+      processed += 1;
+    }
+
+    if (rowResetQueue.length > 0) {
+      scheduleRowResetProcessing();
+    }
+  }
+
+  function enqueueRowReset(card) {
+    if (!card || card.dataset.rendered !== 'true') {
+      return;
+    }
+    if (rowResetQueue.includes(card)) {
+      return;
+    }
+    const rowsContainer = card.querySelector('.table-rows');
+    if (!rowsContainer) {
+      return;
+    }
+    if (
+      !rowsContainer.querySelector('.row-checkbox:not(:disabled), .row-checkbox:checked')
+    ) {
+      return;
+    }
+    rowResetQueue.push(card);
+    scheduleRowResetProcessing();
+  }
 
   // Configuración por defecto y estadísticas
   const defaultConfig = {
@@ -885,12 +980,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const masters = tablesContainer.querySelectorAll('.master-checkbox');
     masters.forEach((master) => {
       master.disabled = !enabled;
+      const card = master.closest('.table-card');
       if (!enabled && master.checked) {
         master.checked = false;
       }
-      const card = master.closest('.table-card');
-      if (card && card.dataset.rendered === 'true') {
-        syncRowsForMaster(master, card);
+      if (!enabled && card && card.dataset.rendered === 'true') {
+        enqueueRowReset(card);
       }
     });
   }
@@ -2062,9 +2157,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const shouldEnable =
       specificToggle && specificToggle.checked && masterCheckbox.checked && !masterCheckbox.disabled;
     const rows = rowsContainer.querySelectorAll('.row-checkbox');
+    if (!rows.length) {
+      return;
+    }
+
+    if (shouldEnable) {
+      const alreadyEnabled = Array.from(rows).every(
+        (rowCb) => !rowCb.disabled && rowCb.checked
+      );
+      if (alreadyEnabled) {
+        return;
+      }
+    } else {
+      const activeRow =
+        rowsContainer.querySelector('.row-checkbox:not(:disabled)') ||
+        rowsContainer.querySelector('.row-checkbox:checked');
+      if (!activeRow) {
+        return;
+      }
+    }
+
     rows.forEach((rowCb) => {
-      rowCb.disabled = !shouldEnable;
-      rowCb.checked = shouldEnable;
+      const targetDisabled = !shouldEnable;
+      if (rowCb.disabled !== targetDisabled) {
+        rowCb.disabled = targetDisabled;
+      }
+      if (rowCb.checked !== shouldEnable) {
+        rowCb.checked = shouldEnable;
+      }
     });
   }
 
