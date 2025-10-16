@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Almacena la lista de problemas del entrenamiento específico actual (si existe)
   let currentSpecificProblems = null;
   let tablesRenderHandle = null;
+  let tableCardObserver = null;
 
   // Configuración por defecto y estadísticas
   const defaultConfig = {
@@ -888,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         master.checked = false;
       }
       const card = master.closest('.table-card');
-      if (card) {
+      if (card && card.dataset.rendered === 'true') {
         syncRowsForMaster(master, card);
       }
     });
@@ -1971,10 +1972,96 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTrainingProblem();
   }
 
-  function syncRowsForMaster(masterCheckbox, card) {
-    const rows = card.querySelectorAll('.row-checkbox');
+  function resetTableCardObserver() {
+    if (tableCardObserver) {
+      tableCardObserver.disconnect();
+      tableCardObserver = null;
+    }
+  }
+
+  function getTableCardObserver() {
+    if (!screens.tables) return null;
+    if (!tableCardObserver) {
+      tableCardObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const card = entry.target;
+            ensureTableCardRows(card);
+            const master = card.querySelector('.master-checkbox');
+            if (master) {
+              syncRowsForMaster(master, card);
+            }
+            tableCardObserver.unobserve(card);
+          });
+        },
+        {
+          root: screens.tables,
+          rootMargin: '160px 0px',
+          threshold: 0.1,
+        }
+      );
+    }
+    return tableCardObserver;
+  }
+
+  function ensureTableCardRows(card) {
+    if (!card) return null;
+    if (card.dataset.rendered === 'true') {
+      return card.querySelector('.table-rows');
+    }
+    const rowsContainer = card.querySelector('.table-rows');
+    if (!rowsContainer) return null;
+
+    const tableValue = parseInt(card.dataset.table, 10);
+    const factorLimit = parseInt(card.dataset.factorLimit, 10);
+    if (!Number.isFinite(tableValue) || !Number.isFinite(factorLimit)) {
+      card.dataset.rendered = 'true';
+      return rowsContainer;
+    }
+
+    const operation = card.dataset.operation || config.operation || 'multiplication';
+    const fragment = document.createDocumentFragment();
+    for (let factor = 1; factor <= factorLimit; factor++) {
+      const row = document.createElement('div');
+      row.className = 'table-row';
+      row.dataset.factor = String(factor);
+
+      const span = document.createElement('span');
+      if (operation === 'multiplication') {
+        span.textContent = `${tableValue} × ${factor} = ${tableValue * factor}`;
+      } else {
+        const dividend = tableValue * factor;
+        span.textContent = `${dividend} ÷ ${tableValue} = ${factor}`;
+      }
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'row-checkbox';
+      checkbox.dataset.table = String(tableValue);
+      checkbox.dataset.factor = String(factor);
+      checkbox.disabled = true;
+
+      row.appendChild(span);
+      row.appendChild(checkbox);
+      fragment.appendChild(row);
+    }
+
+    rowsContainer.appendChild(fragment);
+    card.dataset.rendered = 'true';
+    return rowsContainer;
+  }
+
+  function syncRowsForMaster(masterCheckbox, card, shouldRender = false) {
+    if (!masterCheckbox || !card) return;
+    const rowsContainer = shouldRender ? ensureTableCardRows(card) : card.querySelector('.table-rows');
+    if (!rowsContainer || (!rowsContainer.childElementCount && !shouldRender)) {
+      return;
+    }
+
     const shouldEnable =
       specificToggle && specificToggle.checked && masterCheckbox.checked && !masterCheckbox.disabled;
+    const rows = rowsContainer.querySelectorAll('.row-checkbox');
     rows.forEach((rowCb) => {
       rowCb.disabled = !shouldEnable;
       rowCb.checked = shouldEnable;
@@ -1985,6 +2072,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = document.createElement('div');
     card.className = 'table-card';
     card.dataset.table = String(tableValue);
+    card.dataset.factorLimit = String(factorLimit);
+    card.dataset.operation = config.operation;
+    card.dataset.rendered = 'false';
 
     const header = document.createElement('div');
     header.className = 'table-header';
@@ -2007,43 +2097,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       event.preventDefault();
       master.checked = !master.checked;
-      syncRowsForMaster(master, card);
+      syncRowsForMaster(master, card, true);
     });
 
     master.addEventListener('change', () => {
-      syncRowsForMaster(master, card);
+      syncRowsForMaster(master, card, true);
     });
 
     const rowsContainer = document.createElement('div');
     rowsContainer.className = 'table-rows';
     rowsContainer.dataset.table = String(tableValue);
-
-    const rowsFragment = document.createDocumentFragment();
-    for (let factor = 1; factor <= factorLimit; factor++) {
-      const row = document.createElement('div');
-      row.className = 'table-row';
-      row.dataset.factor = String(factor);
-
-      const span = document.createElement('span');
-      if (config.operation === 'multiplication') {
-        span.textContent = `${tableValue} × ${factor} = ${tableValue * factor}`;
-      } else {
-        const dividend = tableValue * factor;
-        span.textContent = `${dividend} ÷ ${tableValue} = ${factor}`;
-      }
-
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.className = 'row-checkbox';
-      checkbox.dataset.table = String(tableValue);
-      checkbox.dataset.factor = String(factor);
-      checkbox.disabled = true;
-
-      row.appendChild(span);
-      row.appendChild(checkbox);
-      rowsFragment.appendChild(row);
-    }
-    rowsContainer.appendChild(rowsFragment);
 
     rowsContainer.addEventListener('click', (event) => {
       const row = event.target.closest('.table-row');
@@ -2058,8 +2121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     card.appendChild(header);
     card.appendChild(rowsContainer);
 
-    syncRowsForMaster(master, card);
-
     return card;
   }
 
@@ -2073,7 +2134,9 @@ document.addEventListener('DOMContentLoaded', () => {
       tablesRenderHandle = null;
     }
 
+    resetTableCardObserver();
     tablesContainer.innerHTML = '';
+    tablesContainer.scrollTop = 0;
 
     const minValue = Math.max(1, Math.min(config.min, config.max));
     const maxValue = Math.max(1, Math.max(config.min, config.max));
@@ -2100,11 +2163,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderChunk() {
       const fragment = document.createDocumentFragment();
+      const addedCards = [];
       const limit = Math.min(index + chunkSize, tableValues.length);
       for (; index < limit; index++) {
-        fragment.appendChild(createTableCard(tableValues[index], factorLimit));
+        const card = createTableCard(tableValues[index], factorLimit);
+        fragment.appendChild(card);
+        addedCards.push(card);
       }
       tablesContainer.appendChild(fragment);
+
+      const observer = getTableCardObserver();
+      if (observer) {
+        addedCards.forEach((card) => observer.observe(card));
+      } else {
+        addedCards.forEach((card) => {
+          ensureTableCardRows(card);
+          const master = card.querySelector('.master-checkbox');
+          if (master) {
+            syncRowsForMaster(master, card);
+          }
+        });
+      }
+
+      if (tablesContainer.childElementCount === addedCards.length) {
+        const initialCards = addedCards.slice(0, 3);
+        initialCards.forEach((card) => {
+          ensureTableCardRows(card);
+          const master = card.querySelector('.master-checkbox');
+          if (master) {
+            syncRowsForMaster(master, card);
+          }
+        });
+      }
+
       if (index < tableValues.length) {
         tablesRenderHandle = requestAnimationFrame(renderChunk);
       } else {
@@ -2295,6 +2386,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startSpecificBtn) {
       startSpecificBtn.addEventListener('click', () => {
         // Construir lista de problemas específicos seleccionados
+        const checkedMasters = tablesContainer.querySelectorAll('.master-checkbox:checked');
+        checkedMasters.forEach((master) => {
+          const card = master.closest('.table-card');
+          if (card) {
+            syncRowsForMaster(master, card, true);
+          }
+        });
+
         const selectedProblems = [];
         const selectedRows = tablesContainer.querySelectorAll(
           '.row-checkbox:not(:disabled):checked'

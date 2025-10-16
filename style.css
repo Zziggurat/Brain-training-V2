@@ -14,6 +14,7 @@
   --heatmap-cell-size: 72px;
   --heatmap-gap: 10px;
   --header-button-size: 56px;
+  --keypad-width: 420px;
   font-size: 16px;
 }
 
@@ -349,6 +350,7 @@ button:disabled {
     --assistant-rail-width: 110px;
     --assistant-rail-gap: 40px;
     --header-button-size: 52px;
+    --keypad-width: 520px;
   }
 
   body {
@@ -580,18 +582,19 @@ button:disabled {
 
   .answer-area {
     gap: 28px;
-    max-width: 520px;
+    max-width: var(--keypad-width);
   }
 
   .numeric-display {
-    max-width: 460px;
-    padding: 28px 32px;
+    max-width: var(--keypad-width);
+    min-height: 104px;
+    padding: 24px 28px;
     font-size: 44px;
     border-radius: 40px;
   }
 
   .num-keypad {
-    max-width: 520px;
+    max-width: var(--keypad-width);
     gap: 20px;
     grid-template-columns: repeat(3, minmax(132px, 1fr));
   }
@@ -611,7 +614,7 @@ button:disabled {
   #learn-feedback,
   #train-feedback,
   #train-score {
-    max-width: 520px;
+    max-width: var(--keypad-width);
   }
 
   .table-card {
@@ -806,7 +809,7 @@ input[type="checkbox"] {
   align-items: center;
   gap: 22px;
   width: 100%;
-  max-width: 420px;
+  max-width: var(--keypad-width);
 }
 
 .answer-option {
@@ -841,9 +844,9 @@ input[type="checkbox"] {
 
 .numeric-display {
   width: 100%;
-  max-width: 360px;
-  min-height: 110px;
-  padding: 22px 28px;
+  max-width: var(--keypad-width);
+  min-height: 92px;
+  padding: 18px 24px;
   border-radius: 32px;
   background: rgba(255, 255, 255, 0.98);
   border: 2px solid transparent;
@@ -863,7 +866,7 @@ input[type="checkbox"] {
   grid-template-columns: repeat(3, minmax(116px, 1fr));
   gap: 18px;
   width: 100%;
-  max-width: 420px;
+  max-width: var(--keypad-width);
 }
 
 .num-btn {
@@ -906,14 +909,14 @@ input[type="checkbox"] {
 #learn-feedback,
 #train-feedback {
   width: 100%;
-  max-width: 420px;
+  max-width: var(--keypad-width);
   text-align: center;
 }
 
 #learn-next-btn,
 #learn-skip-btn,
 #train-restart-btn {
-  max-width: 420px;
+  max-width: var(--keypad-width);
   align-self: center;
 }
 
