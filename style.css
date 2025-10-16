@@ -650,27 +650,27 @@ button:disabled {
 }
 
 @media (max-width: 1024px) {
-  html,
-  body {
-    background-color: #040714;
-    position: relative;
+  :root {
+    --mobile-wallpaper: url("https://raw.githubusercontent.com/Zziggurat/Brain-training/main/assets/ciudad-cyberpunk.png");
   }
 
-  body {
+  html {
     background-color: #040714;
-  }
-
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background-color: #040714;
-    background-image: url("assets/ciudad-cyberpunk.png");
+    background-image: var(--mobile-wallpaper);
     background-size: cover;
-    background-position: center bottom;
     background-repeat: no-repeat;
-    z-index: -1;
-    pointer-events: none;
+    background-position: center bottom;
+    background-attachment: fixed;
+  }
+
+  @supports (env(safe-area-inset-bottom)) {
+    html {
+      background-position: center calc(100% + env(safe-area-inset-bottom));
+    }
+  }
+
+  body {
+    background-color: transparent;
   }
 
   #app {
