@@ -28,6 +28,8 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
+  height: 100%;
+  overscroll-behavior: none;
 }
 
 body {
@@ -37,13 +39,18 @@ body {
   display: flex;
   justify-content: center;
   overflow: hidden;
+  min-height: 100dvh;
 }
 
 #app {
   width: 100%;
   max-width: 430px;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 button {
@@ -66,13 +73,13 @@ button:disabled {
   padding: calc(env(safe-area-inset-top, 0px) + 28px) 24px calc(env(safe-area-inset-bottom, 0px) + 36px);
   position: relative;
   box-sizing: border-box;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 }
 
 .screen.active {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .hidden {
@@ -122,6 +129,13 @@ button:disabled {
   justify-content: flex-start;
   gap: 32px;
   overflow: hidden;
+}
+
+#config-screen,
+#tables-screen,
+#progress-screen {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #learning-screen .top-bar,
@@ -571,6 +585,7 @@ button:disabled {
     padding: 56px 64px;
     border-radius: 44px;
     box-shadow: 0 38px 72px rgba(0, 0, 0, 0.18);
+    margin-bottom: 16px;
   }
 
   .card-front {
@@ -589,22 +604,22 @@ button:disabled {
   }
 
   .answer-area {
-    gap: 28px;
+    gap: 20px;
     max-width: var(--practice-width);
   }
 
   .numeric-display {
     max-width: var(--practice-width);
-    min-height: 104px;
-    padding: 24px 28px;
-    font-size: 44px;
-    border-radius: 40px;
+    min-height: 84px;
+    padding: 18px 24px;
+    font-size: 40px;
+    border-radius: 32px;
   }
 
   .num-keypad {
     max-width: var(--practice-width);
-    gap: 20px;
-    grid-template-columns: repeat(3, minmax(132px, 1fr));
+    gap: 18px;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
   }
 
   .num-btn {
@@ -664,17 +679,19 @@ button:disabled {
   #home-screen,
   #learning-screen,
   #training-screen {
-    padding: calc(env(safe-area-inset-top, 0px) + 22px) 16px
-      calc(env(safe-area-inset-bottom, 0px) + 28px);
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px
+      calc(env(safe-area-inset-bottom, 0px) + 22px);
   }
 
   #home-screen {
     gap: 22px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   #learning-screen,
   #training-screen {
-    gap: 20px;
+    gap: 12px;
   }
 
   #learning-screen .top-bar,
@@ -683,13 +700,14 @@ button:disabled {
   }
 
   .problem-card {
-    padding: 34px 26px;
-    border-radius: 28px;
+    padding: 20px 18px;
+    border-radius: 22px;
+    margin-bottom: 2px;
   }
 
   .card-front {
-    min-height: 180px;
-    gap: 16px;
+    min-height: 148px;
+    gap: 10px;
   }
 
   .stars {
@@ -697,34 +715,43 @@ button:disabled {
   }
 
   .problem {
-    font-size: 48px;
+    font-size: 44px;
   }
 
   .answer-area {
-    gap: 16px;
+    gap: 8px;
+    align-items: stretch;
   }
 
   .numeric-display {
-    min-height: 68px;
-    padding: 14px 18px;
-    border-radius: 26px;
-    letter-spacing: 2px;
+    min-height: 48px;
+    padding: 8px 12px;
+    border-radius: 20px;
+    letter-spacing: 1.2px;
+    font-size: 28px;
   }
 
   .num-keypad {
-    gap: 12px;
+    gap: 8px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    transform: translateX(-16px);
   }
 
   .num-btn {
-    min-height: 62px;
-    padding: 14px 0;
-    font-size: 26px;
-    border-radius: 22px;
+    min-height: 54px;
+    padding: 12px 0;
+    font-size: 24px;
+    border-radius: 18px;
   }
 
   .delete-btn {
     font-size: 32px;
+  }
+
+  #learn-feedback,
+  #train-feedback,
+  #train-score {
+    margin-top: 4px;
   }
 }
 
@@ -852,7 +879,7 @@ input[type="checkbox"] {
 .problem-card {
   width: 100%;
   max-width: var(--practice-width);
-  margin: 0 auto 18px;
+  margin: 0 auto 12px;
   background: var(--card-bg);
   border-radius: 36px;
   padding: 42px 36px;
@@ -897,7 +924,7 @@ input[type="checkbox"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
+  gap: 16px;
   width: 100%;
   max-width: var(--practice-width);
 }
@@ -935,19 +962,19 @@ input[type="checkbox"] {
 .numeric-display {
   width: 100%;
   max-width: var(--practice-width);
-  min-height: 92px;
-  padding: 18px 24px;
-  border-radius: 32px;
+  min-height: 72px;
+  padding: 14px 20px;
+  border-radius: 28px;
   background: rgba(255, 255, 255, 0.98);
   border: 2px solid transparent;
-  font-size: 40px;
+  font-size: 36px;
   font-weight: 700;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  letter-spacing: 3px;
+  letter-spacing: 2px;
   box-shadow: 0 24px 40px rgba(0, 0, 0, 0.12);
 }
 
