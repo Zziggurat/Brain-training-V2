@@ -47,6 +47,7 @@ body {
   height: 100%;
   overscroll-behavior: none;
   background: #05070d;
+  overflow: hidden;
 }
 
 body {
@@ -58,8 +59,6 @@ body {
   justify-content: center;
   align-items: stretch;
   min-height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
   line-height: 1.5;
 }
 
@@ -98,6 +97,12 @@ button:disabled {
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.screen::-webkit-scrollbar {
+  display: none;
 }
 
 .screen.active {
