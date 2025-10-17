@@ -652,6 +652,10 @@ button:disabled {
 @media (max-width: 1024px) {
   :root {
     --mobile-wallpaper: url("https://raw.githubusercontent.com/Zziggurat/Brain-training/main/assets/ciudad-cyberpunk.png");
+codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+    --mobile-wallpaper-shift: 72px;
+
+ main
   }
 
   html {
@@ -659,13 +663,22 @@ button:disabled {
     background-image: var(--mobile-wallpaper);
     background-size: cover;
     background-repeat: no-repeat;
+ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+    background-position: center calc(100% + var(--mobile-wallpaper-shift));
+
     background-position: center bottom;
     background-attachment: fixed;
+ main
   }
 
   @supports (env(safe-area-inset-bottom)) {
     html {
+ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+      background-position: center
+        calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
+
       background-position: center calc(100% + env(safe-area-inset-bottom));
+ main
     }
   }
 
@@ -731,14 +744,14 @@ button:disabled {
   }
 
   .problem-card {
-    padding: 14px 16px;
+    padding: 10px 16px 12px;
     border-radius: 22px;
     margin-bottom: 0;
   }
 
   .card-front {
-    min-height: 96px;
-    gap: 6px;
+    min-height: auto;
+    gap: 4px;
   }
 
   .stars {
