@@ -104,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let tableCardObserver = null;
   const rowResetQueue = [];
   let rowResetHandle = null;
+  let assistantRefreshHandle = null;
 
   function scheduleRowResetProcessing() {
     if (rowResetHandle !== null) {
@@ -198,16 +199,148 @@ document.addEventListener('DOMContentLoaded', () => {
     scheduleRowResetProcessing();
   }
 
+  function scheduleAssistantPanelRefresh() {
+    if (!assistantPanel) return;
+    if (assistantRefreshHandle !== null) {
+      return;
+    }
+    const win = typeof window !== 'undefined' ? window : null;
+    const runner = () => {
+      assistantRefreshHandle = null;
+      try {
+        renderAssistantPanel();
+      } catch (err) {
+        console.error('Error al actualizar el asistente', err);
+      }
+    };
+    if (win && typeof win.requestAnimationFrame === 'function') {
+      assistantRefreshHandle = win.requestAnimationFrame(runner);
+      return;
+    }
+    assistantRefreshHandle = setTimeout(runner, 0);
+  }
+
   // Configuración por defecto y estadísticas
-  const defaultConfig = {
-    operation: 'multiplication',
+  const defaultModeSettings = Object.freeze({
     min: 1,
     max: 10,
     multipleChoice: false,
     numQuestions: 10,
     seconds: 30,
+  });
+
+  function cloneModeSettings(source = defaultModeSettings) {
+    return {
+      min: Number.isFinite(source.min) ? source.min : defaultModeSettings.min,
+      max: Number.isFinite(source.max) ? source.max : defaultModeSettings.max,
+      multipleChoice:
+        typeof source.multipleChoice === 'boolean'
+          ? source.multipleChoice
+          : defaultModeSettings.multipleChoice,
+      numQuestions: Number.isFinite(source.numQuestions)
+        ? source.numQuestions
+        : defaultModeSettings.numQuestions,
+      seconds: Number.isFinite(source.seconds) ? source.seconds : defaultModeSettings.seconds,
+    };
+  }
+
+  const defaultConfig = {
+    activeOperation: 'multiplication',
+    modes: {
+      multiplication: cloneModeSettings(),
+      division: cloneModeSettings(),
+    },
   };
-  let config = {};
+
+  function cloneDefaultConfig() {
+    return {
+      activeOperation: defaultConfig.activeOperation,
+      modes: {
+        multiplication: cloneModeSettings(defaultConfig.modes.multiplication),
+        division: cloneModeSettings(defaultConfig.modes.division),
+      },
+    };
+  }
+
+  function normalizeModeSettings(raw, fallback) {
+    const base = cloneModeSettings(fallback);
+    if (!raw || typeof raw !== 'object') {
+      return base;
+    }
+    const normalized = cloneModeSettings(raw);
+    normalized.min = Math.max(1, Math.floor(normalized.min));
+    normalized.max = Math.max(normalized.min, Math.floor(normalized.max));
+    normalized.numQuestions = Math.max(1, Math.floor(normalized.numQuestions));
+    normalized.seconds = Math.max(1, Math.floor(normalized.seconds));
+    return normalized;
+  }
+
+  function normalizeConfigShape(raw) {
+    const base = cloneDefaultConfig();
+    if (!raw || typeof raw !== 'object') {
+      return base;
+    }
+
+    if (raw.modes && typeof raw.modes === 'object') {
+      const active = raw.activeOperation === 'division' ? 'division' : 'multiplication';
+      return {
+        activeOperation: active,
+        modes: {
+          multiplication: normalizeModeSettings(
+            raw.modes.multiplication,
+            base.modes.multiplication,
+          ),
+          division: normalizeModeSettings(raw.modes.division, base.modes.division),
+        },
+      };
+    }
+
+    // Compatibilidad con configuraciones antiguas (un solo conjunto de valores)
+    const legacyOperation = raw.operation === 'division' ? 'division' : 'multiplication';
+    const legacySettings = normalizeModeSettings(raw, base.modes[legacyOperation]);
+    const otherOperation = legacyOperation === 'multiplication' ? 'division' : 'multiplication';
+    return {
+      activeOperation: legacyOperation,
+      modes: {
+        [legacyOperation]: legacySettings,
+        [otherOperation]: base.modes[otherOperation],
+      },
+    };
+  }
+
+  function getModeConfig(operation) {
+    if (!config || typeof config !== 'object') {
+      config = cloneDefaultConfig();
+    }
+    if (!config.modes) {
+      config.modes = cloneDefaultConfig().modes;
+    }
+    const op = operation === 'division' ? 'division' : 'multiplication';
+    if (!config.modes[op]) {
+      config.modes[op] = cloneModeSettings();
+    }
+    return config.modes[op];
+  }
+
+  function getActiveOperation() {
+    return config && config.activeOperation === 'division' ? 'division' : 'multiplication';
+  }
+
+  function setActiveOperation(operation) {
+    const op = operation === 'division' ? 'division' : 'multiplication';
+    if (!config) {
+      config = cloneDefaultConfig();
+    }
+    config.activeOperation = op;
+    // Asegurar que exista configuración para el modo seleccionado
+    getModeConfig(op);
+  }
+
+  function getActiveModeConfig() {
+    return getModeConfig(getActiveOperation());
+  }
+
+  let config = cloneDefaultConfig();
 
   const defaultStats = {
     totalCorrect: 0,
@@ -229,6 +362,28 @@ document.addEventListener('DOMContentLoaded', () => {
   let intervalStages = {};
   // Almacena las combinaciones falladas por fecha (YYYY-MM-DD) para entrenar los "errores del día".
   let errorsToday = {};
+
+  // ----- REGISTRO DE MAESTRÍA POR PROBLEMA -----
+  const MASTERY_STORAGE_KEY = 'masteryMap';
+  let masteryMap = {};
+
+  const DEFAULT_MASTERY_ENTRY = Object.freeze({
+    attempts: 0,
+    correct: 0,
+    streak: 0,
+    bestStreak: 0,
+    timedAttempts: 0,
+    avgTime: 0,
+    lastSeen: 0,
+    lastOutcome: 'none',
+    skipped: 0,
+    modeCounts: {},
+    recent: [],
+    lastMode: 'learning',
+    lastSource: 'unknown',
+    errorStreak: 0,
+    lastTimeTaken: 0,
+  });
 
   /**
    * Iniciar una sesión con los errores cometidos el día de hoy.
@@ -412,6 +567,276 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('errorsToday', JSON.stringify(errorsToday));
   }
 
+  function createEmptyMastery() {
+    return {
+      attempts: 0,
+      correct: 0,
+      streak: 0,
+      bestStreak: 0,
+      timedAttempts: 0,
+      avgTime: 0,
+      lastSeen: 0,
+      lastOutcome: 'none',
+      skipped: 0,
+      modeCounts: {},
+      recent: [],
+      lastMode: 'learning',
+      lastSource: 'unknown',
+      errorStreak: 0,
+      lastTimeTaken: 0,
+    };
+  }
+
+  function loadMastery() {
+    const saved = localStorage.getItem(MASTERY_STORAGE_KEY);
+    if (!saved) {
+      masteryMap = {};
+      return;
+    }
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        masteryMap = {};
+        Object.keys(parsed).forEach((key) => {
+          const entry = Object.assign(createEmptyMastery(), parsed[key] || {});
+          if (!entry.modeCounts || typeof entry.modeCounts !== 'object') {
+            entry.modeCounts = {};
+          }
+          if (!Array.isArray(entry.recent)) {
+            entry.recent = [];
+          }
+          masteryMap[key] = entry;
+        });
+      } else {
+        masteryMap = {};
+      }
+    } catch (err) {
+      console.error('No se pudo cargar masteryMap', err);
+      masteryMap = {};
+    }
+  }
+
+  function saveMastery() {
+    try {
+      localStorage.setItem(MASTERY_STORAGE_KEY, JSON.stringify(masteryMap));
+    } catch (err) {
+      console.error('No se pudo guardar masteryMap', err);
+    }
+  }
+
+  function getMasteryEntry(key) {
+    if (!masteryMap[key]) {
+      masteryMap[key] = createEmptyMastery();
+    }
+    return masteryMap[key];
+  }
+
+  const MAX_MASTERY_HISTORY = 20;
+
+  function recordProblemAttempt(problem, { correct, timeTaken = 0, skipped = false, mode = 'learning', source = 'unknown', timedOut = false } = {}) {
+    if (!problem) return;
+    const key = createProblemKey(problem);
+    const entry = getMasteryEntry(key);
+    entry.attempts += 1;
+    if (correct) {
+      entry.correct += 1;
+      entry.streak += 1;
+      entry.errorStreak = 0;
+    } else {
+      entry.streak = 0;
+      entry.errorStreak = (entry.errorStreak || 0) + 1;
+    }
+    entry.bestStreak = Math.max(entry.bestStreak || 0, entry.streak);
+    entry.lastSeen = Date.now();
+    entry.lastOutcome = skipped ? 'skipped' : correct ? 'correct' : timedOut ? 'timeout' : 'incorrect';
+    entry.lastMode = mode;
+    entry.lastSource = source;
+    if (skipped) {
+      entry.skipped = (entry.skipped || 0) + 1;
+    }
+    const ms = Number.isFinite(timeTaken) && timeTaken >= 0 ? timeTaken : 0;
+    entry.lastTimeTaken = ms;
+    if (ms > 0) {
+      entry.timedAttempts = (entry.timedAttempts || 0) + 1;
+      if (!entry.avgTime || entry.timedAttempts === 1) {
+        entry.avgTime = ms;
+      } else {
+        entry.avgTime += (ms - entry.avgTime) / entry.timedAttempts;
+      }
+    }
+    entry.modeCounts = entry.modeCounts || {};
+    entry.modeCounts[mode] = (entry.modeCounts[mode] || 0) + 1;
+    entry.recent = Array.isArray(entry.recent) ? entry.recent : [];
+    entry.recent.push({
+      ts: entry.lastSeen,
+      correct: !!correct,
+      skipped: !!skipped,
+      mode,
+      time: ms,
+      outcome: entry.lastOutcome,
+    });
+    if (entry.recent.length > MAX_MASTERY_HISTORY) {
+      entry.recent.splice(0, entry.recent.length - MAX_MASTERY_HISTORY);
+    }
+    masteryMap[key] = entry;
+    if (mode !== 'learning') {
+      applyAdaptiveScheduling(problem, entry, { correct, skipped, mode });
+    }
+    saveMastery();
+    scheduleAssistantPanelRefresh();
+  }
+
+  function parseProblemKey(key) {
+    if (typeof key !== 'string') return null;
+    const parts = key.split('_');
+    if (!parts.length) return null;
+    if (parts[0] === 'm' && parts.length === 3) {
+      const a = parseInt(parts[1], 10);
+      const b = parseInt(parts[2], 10);
+      if (Number.isFinite(a) && Number.isFinite(b)) {
+        return { type: 'multiplication', a, b, answer: a * b };
+      }
+    }
+    if (parts[0] === 'd' && parts.length === 3) {
+      const dividend = parseInt(parts[1], 10);
+      const divisor = parseInt(parts[2], 10);
+      if (Number.isFinite(dividend) && Number.isFinite(divisor) && divisor !== 0) {
+        return { type: 'division', dividend, divisor, answer: dividend / divisor };
+      }
+    }
+    return null;
+  }
+
+  function getMasteryStats(key) {
+    const entry = masteryMap[key];
+    if (!entry) {
+      return {
+        entry: null,
+        accuracy: 0,
+        attempts: 0,
+        avgTime: 0,
+        streak: 0,
+        errorStreak: 0,
+        lastSeen: 0,
+      };
+    }
+    const attempts = entry.attempts || 0;
+    const accuracy = attempts > 0 ? entry.correct / attempts : 0;
+    return {
+      entry,
+      accuracy,
+      attempts,
+      avgTime: entry.avgTime || 0,
+      streak: entry.streak || 0,
+      errorStreak: entry.errorStreak || 0,
+      lastSeen: entry.lastSeen || 0,
+    };
+  }
+
+  function calculateProblemWeight(problem, { now = Date.now() } = {}) {
+    const key = createProblemKey(problem);
+    const starCount = stars[key] || 0;
+    const due = dueTimes[key] || 0;
+    const { accuracy, attempts, avgTime, streak, errorStreak, lastSeen } = getMasteryStats(key);
+
+    let weight = 1;
+
+    if (starCount < 5) {
+      weight += (5 - starCount) * 1.2;
+    } else {
+      weight += 0.5;
+    }
+
+    if (due > 0) {
+      if (due <= now) {
+        weight += 6;
+      } else {
+        const diff = due - now;
+        if (diff < 60 * 60 * 1000) {
+          weight += 4;
+        } else if (diff < 6 * 60 * 60 * 1000) {
+          weight += 2.5;
+        } else {
+          weight += 0.6;
+        }
+      }
+    }
+
+    if (attempts === 0) {
+      weight += 2.5;
+    } else if (accuracy < 0.5) {
+      weight += 5;
+    } else if (accuracy < 0.7) {
+      weight += 3;
+    } else if (accuracy < 0.85) {
+      weight += 1.5;
+    } else if (accuracy > 0.95 && streak >= 5 && due > now) {
+      weight *= 0.6;
+    }
+
+    if (avgTime > 8000) {
+      weight += 2;
+    } else if (avgTime > 6000) {
+      weight += 1;
+    }
+
+    if (errorStreak >= 2) {
+      weight += 1.5;
+    }
+
+    if (lastSeen > 0) {
+      const since = now - lastSeen;
+      if (since > 5 * 24 * 60 * 60 * 1000) {
+        weight += 2.5;
+      } else if (since > 2 * 24 * 60 * 60 * 1000) {
+        weight += 1.5;
+      } else if (since > 24 * 60 * 60 * 1000) {
+        weight += 0.8;
+      }
+    } else {
+      weight += 0.8;
+    }
+
+    if (weight < 1) {
+      return 1;
+    }
+    return Math.max(1, Math.round(weight));
+  }
+
+  function applyAdaptiveScheduling(problem, entry, { correct, skipped, mode }) {
+    if (!problem) return;
+    const key = createProblemKey(problem);
+    const now = Date.now();
+    const treatedCorrect = !!correct && !skipped;
+    if (treatedCorrect) {
+      let stage = intervalStages[key] || 0;
+      const accuracy = entry.attempts > 0 ? entry.correct / entry.attempts : 0;
+      if (entry.streak >= 4 || accuracy > 0.9) {
+        stage = Math.min(stage + 1, spacedIntervals.length - 1);
+      }
+      const interval = spacedIntervals[Math.max(0, stage)] || spacedIntervals[spacedIntervals.length - 1] || 24 * 60 * 60 * 1000;
+      intervalStages[key] = stage;
+      dueTimes[key] = now + interval;
+    } else {
+      intervalStages[key] = 0;
+      const baseInterval = spacedIntervals[0] || 10 * 60 * 1000;
+      const penalty = Math.max(60 * 1000, Math.floor(baseInterval / 2));
+      dueTimes[key] = now + penalty;
+      if (mode !== 'learning') {
+        const today = getTodayDate();
+        if (!errorsToday[today]) {
+          errorsToday[today] = [];
+        }
+        if (!errorsToday[today].includes(key)) {
+          errorsToday[today].push(key);
+        }
+        saveErrors();
+      }
+    }
+    saveDueTimes();
+    saveIntervalStages();
+  }
+
   /**
    * Actualizar las estrellas para un problema dado.
    * Incrementa en 1 cuando es correcto (máximo 5) o decrementa en 1 cuando es incorrecto (mínimo 0).
@@ -468,14 +893,14 @@ document.addEventListener('DOMContentLoaded', () => {
    * El progreso sólo se basa en el modo de operación actual.
    */
   function calculateProgress() {
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     const totalCombos = (max - min + 1) * (max - min + 1);
     const totalPossibleStars = totalCombos * 5;
     let earnedStars = 0;
     for (let a = min; a <= max; a++) {
       for (let b = min; b <= max; b++) {
-        if (config.operation === 'multiplication') {
+        if (operation === 'multiplication') {
           const key = createProblemKey({ type: 'multiplication', a, b });
           earnedStars += stars[key] || 0;
         } else {
@@ -593,6 +1018,24 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${seconds}s`;
   }
 
+  function formatRelativeDelay(ms) {
+    const abs = Math.abs(ms);
+    const sign = ms >= 0 ? 'hace' : 'en';
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (abs >= day) {
+      return `${sign} ${Math.round(abs / day)}d`;
+    }
+    if (abs >= hour) {
+      return `${sign} ${Math.round(abs / hour)}h`;
+    }
+    if (abs >= minute) {
+      return `${sign} ${Math.max(1, Math.round(abs / minute))}m`;
+    }
+    return `${sign} ${Math.max(1, Math.round(abs / 1000))}s`;
+  }
+
   /**
    * Construir el mapa de calor para el progreso.
    * Muestra una cuadrícula de (max-min+1)×(max-min+1) donde cada celda
@@ -601,8 +1044,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function buildHeatmap() {
     if (!heatmapContainer) return;
     heatmapContainer.innerHTML = '';
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     const size = max - min + 1;
     const grid = document.createElement('div');
     grid.className = 'heatmap-grid';
@@ -639,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
       grid.appendChild(rowHeader);
       for (let b = min; b <= max; b++) {
         const key = createProblemKey(
-          config.operation === 'multiplication'
+          operation === 'multiplication'
             ? { type: 'multiplication', a, b }
             : { type: 'division', dividend: a * b, divisor: a }
         );
@@ -659,7 +1102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Al hacer clic sobre una celda, mostrar la operación y su resultado en la tarjeta de resultado
         cell.addEventListener('click', () => {
           let resultText;
-          if (config.operation === 'multiplication') {
+          if (operation === 'multiplication') {
             resultText = `${a} × ${b} = ${a * b}`;
           } else {
             const dividend = a * b;
@@ -684,93 +1127,158 @@ document.addEventListener('DOMContentLoaded', () => {
    * Devuelve un array de objetos con título, razón y callback de acción.
    * Las recomendaciones se basan en combinaciones con pocas estrellas o errores recientes.
    */
+  function problemLabel(problem) {
+    if (!problem) return '';
+    if (problem.type === 'multiplication') {
+      return `${problem.a}×${problem.b}`;
+    }
+    return `${problem.dividend}÷${problem.divisor}`;
+  }
+
+  function buildProblemAction(problem) {
+    if (!problem) {
+      return () => {};
+    }
+    if (problem.type === 'multiplication') {
+      return () => startSpecificProblemTraining(problem.a, problem.b);
+    }
+    return () => startSpecificProblemTraining(problem.divisor, problem.answer);
+  }
+
+  function formatAccuracyDetail(accuracy, attempts) {
+    if (!Number.isFinite(accuracy) || attempts === 0) {
+      return 'sin datos previos';
+    }
+    const percent = Math.round(accuracy * 100);
+    return `precisión ${percent}% en ${attempts} intentos`;
+  }
+
   function computeRecommendations() {
-    const recs = [];
-    // Cargar configuración y estrellas actualizadas
-    try {
-      loadStars();
-      loadErrors();
-    } catch (e) {
-      // Ignorar errores de carga
-    }
-    const min = config.min;
-    const max = config.max;
-    // Calcular recomendaciones por tabla (fila) con combinaciones débiles
-    if (config.operation === 'multiplication') {
-      for (let a = min; a <= max; a++) {
-        let lowCount = 0;
-        for (let b = min; b <= max; b++) {
-          const key = createProblemKey({ type: 'multiplication', a, b });
-          const star = stars[key] || 0;
-          // Consideramos débiles las celdas con 3 estrellas o menos
-          if (star <= 3) lowCount++;
-        }
-        if (lowCount > 0) {
-          recs.push({
-            id: `row_${a}`,
-            title: `Entrena tabla del ${a}`,
-            reason: `Tienes ${lowCount} combinaciones con menos de 4 estrellas`,
-            action: () => startSpecificRowTraining(a),
-          });
-        }
-      }
-    } else {
-      // División: trabajar por divisor (fila) y contarlas igual
-      for (let a = min; a <= max; a++) {
-        let lowCount = 0;
-        for (let b = min; b <= max; b++) {
-          const dividend = a * b;
-          const problem = { type: 'division', dividend, divisor: a };
-          const key = createProblemKey(problem);
-          const star = stars[key] || 0;
-          if (star <= 3) lowCount++;
-        }
-        if (lowCount > 0) {
-          recs.push({
-            id: `row_${a}`,
-            title: `Entrena divisiones del ${a}`,
-            reason: `Tienes ${lowCount} combinaciones con menos de 4 estrellas`,
-            action: () => startSpecificRowTraining(a),
-          });
-        }
-      }
-    }
-    // Extraer errores del día para recomendaciones específicas
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
+    const now = Date.now();
     const today = getTodayDate();
-    const errs = errorsToday[today] || [];
-    errs.forEach((key) => {
-      const parts = key.split('_');
-      if (parts[0] === 'm') {
-        const a = parseInt(parts[1], 10);
-        const b = parseInt(parts[2], 10);
-        recs.unshift({
-          id: `err_${a}_${b}`,
-          title: `Refuerza ${a}×${b}`,
-          reason: `Fallaste esta combinación hoy`,
-          action: () => startSpecificProblemTraining(a, b),
-        });
-      } else if (parts[0] === 'd') {
-        const dividend = parseInt(parts[1], 10);
-        const divisor = parseInt(parts[2], 10);
-        const b = dividend / divisor;
-        recs.unshift({
-          id: `err_${dividend}_${divisor}`,
-          title: `Refuerza ${dividend}÷${divisor}`,
-          reason: `Fallaste esta combinación hoy`,
-          action: () => startSpecificProblemTraining(divisor, b),
-        });
+
+    const dueCandidates = [];
+    const struggling = [];
+    const slow = [];
+    const rowStats = new Map();
+
+    for (let a = min; a <= max; a++) {
+      for (let b = min; b <= max; b++) {
+        const problem =
+          operation === 'multiplication'
+            ? { type: 'multiplication', a, b, answer: a * b }
+            : { type: 'division', dividend: a * b, divisor: a, answer: b };
+        const key = createProblemKey(problem);
+        const { accuracy, attempts, avgTime } = getMasteryStats(key);
+        const entry = masteryMap[key];
+        const due = dueTimes[key] || 0;
+        const star = stars[key] || 0;
+        const timedAttempts = entry ? entry.timedAttempts || 0 : 0;
+
+        if (due > 0 && (due <= now || due - now <= 45 * 60 * 1000)) {
+          dueCandidates.push({
+            key,
+            problem,
+            due,
+            accuracy,
+            attempts,
+          });
+        }
+
+        if (attempts >= 3 && accuracy < 0.75) {
+          struggling.push({ key, problem, accuracy, attempts });
+        }
+
+        if (timedAttempts >= 3 && avgTime > 6500) {
+          slow.push({ key, problem, avgTime, timedAttempts });
+        }
+
+        const rowKey = `row_${a}`;
+        let rowData = rowStats.get(rowKey);
+        if (!rowData) {
+          rowData = { a, low: 0, total: 0 };
+          rowStats.set(rowKey, rowData);
+        }
+        rowData.total += 1;
+        if (star <= 3) {
+          rowData.low += 1;
+        }
       }
-    });
-    // Quitar duplicados manteniendo orden (por id)
+    }
+
     const unique = [];
     const seen = new Set();
-    recs.forEach((r) => {
-      if (!seen.has(r.id)) {
-        seen.add(r.id);
-        unique.push(r);
-      }
+    const pushRec = (rec) => {
+      if (!rec || !rec.id || seen.has(rec.id)) return;
+      seen.add(rec.id);
+      unique.push(rec);
+    };
+
+    const errorsList = Array.isArray(errorsToday[today]) ? errorsToday[today] : [];
+    errorsList.forEach((key) => {
+      const problem = parseProblemKey(key);
+      if (!problem) return;
+      const { accuracy, attempts } = getMasteryStats(key);
+      pushRec({
+        id: `err_${key}`,
+        title: `Refuerza ${problemLabel(problem)}`,
+        reason: `Fallaste esta combinación hoy (${formatAccuracyDetail(accuracy, attempts)})`,
+        action: buildProblemAction(problem),
+      });
     });
-    // Ordenar por prioridad simple: errores primero, luego lowCount (ya en orden)
+
+    dueCandidates
+      .sort((a, b) => a.due - b.due)
+      .slice(0, 3)
+      .forEach((item) => {
+        const diff = now - item.due;
+        const overdue = diff >= 0;
+        pushRec({
+          id: `due_${item.key}`,
+          title: `Repasa ${problemLabel(item.problem)}`,
+          reason: `${overdue ? 'Revisión vencida' : 'Revisión próxima'} ${formatRelativeDelay(overdue ? diff : -diff)} (${formatAccuracyDetail(item.accuracy, item.attempts)})`,
+          action: buildProblemAction(item.problem),
+        });
+      });
+
+    struggling
+      .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts)
+      .slice(0, 2)
+      .forEach((item) => {
+        pushRec({
+          id: `weak_${item.key}`,
+          title: `Refuerza ${problemLabel(item.problem)}`,
+          reason: `Solo ${formatAccuracyDetail(item.accuracy, item.attempts)}`,
+          action: buildProblemAction(item.problem),
+        });
+      });
+
+    slow
+      .sort((a, b) => b.avgTime - a.avgTime)
+      .slice(0, 1)
+      .forEach((item) => {
+        pushRec({
+          id: `slow_${item.key}`,
+          title: `Acelera ${problemLabel(item.problem)}`,
+          reason: `Tiempo medio ${formatDuration(item.avgTime)} en ${item.timedAttempts} intentos cronometrados`,
+          action: buildProblemAction(item.problem),
+        });
+      });
+
+    const rowCandidates = Array.from(rowStats.values()).filter((row) => row.low > 0);
+    rowCandidates.sort((a, b) => b.low - a.low);
+    if (rowCandidates.length > 0) {
+      const row = rowCandidates[0];
+      pushRec({
+        id: `row_${row.a}`,
+        title: operation === 'multiplication' ? `Entrena tabla del ${row.a}` : `Entrena divisiones del ${row.a}`,
+        reason: `${row.low} combinaciones con menos de 4 estrellas`,
+        action: () => startSpecificRowTraining(row.a),
+      });
+    }
+
     return unique.slice(0, 3);
   }
 
@@ -887,10 +1395,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function startSpecificColumnTraining(b) {
     const problems = [];
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     for (let a = min; a <= max; a++) {
-      if (config.operation === 'multiplication') {
+      if (operation === 'multiplication') {
         problems.push({ type: 'multiplication', a, b, answer: a * b });
       } else {
         const dividend = a * b;
@@ -907,10 +1415,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function startSpecificRowTraining(a) {
     const problems = [];
-    const min = config.min;
-    const max = config.max;
+    const { min, max } = getActiveModeConfig();
+    const operation = getActiveOperation();
     for (let b = min; b <= max; b++) {
-      if (config.operation === 'multiplication') {
+      if (operation === 'multiplication') {
         problems.push({ type: 'multiplication', a, b, answer: a * b });
       } else {
         const dividend = a * b;
@@ -928,7 +1436,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function startSpecificProblemTraining(a, b) {
     let problem;
-    if (config.operation === 'multiplication') {
+    if (getActiveOperation() === 'multiplication') {
       problem = { type: 'multiplication', a, b, answer: a * b };
     } else {
       const dividend = a * b;
@@ -962,6 +1470,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let trainTimeRemaining = 0;
   let trainTotalSeconds = 0;
   let trainTypedAnswer = '';
+  let trainQuestionStartTime = 0;
 
   /**
    * Actualizar la interfaz de entrenamiento específico.
@@ -997,25 +1506,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const saved = localStorage.getItem('config');
     if (saved) {
       try {
-        config = Object.assign({}, defaultConfig, JSON.parse(saved));
+        config = normalizeConfigShape(JSON.parse(saved));
       } catch (e) {
-        config = Object.assign({}, defaultConfig);
+        config = cloneDefaultConfig();
       }
     } else {
-      config = Object.assign({}, defaultConfig);
+      config = cloneDefaultConfig();
     }
     // Actualizar UI
-    operationRadios.forEach((radio) => {
-      radio.checked = radio.value === config.operation;
-    });
-    configMinInput.value = config.min;
-    configMaxInput.value = config.max;
-    configMultipleChoice.checked = config.multipleChoice;
-    configNumQuestionsSelect.value = config.numQuestions;
-    configSecondsInput.value = config.seconds;
+    const activeOperation = getActiveOperation();
+    syncOperationRadios(activeOperation);
+    fillConfigInputs(activeOperation);
 
     // Actualizar botones de operación en inicio
     updateHomeOperationToggle();
+  }
+
+  function syncOperationRadios(operation) {
+    operationRadios.forEach((radio) => {
+      radio.checked = radio.value === operation;
+    });
+  }
+
+  function fillConfigInputs(operation) {
+    const modeConfig = getModeConfig(operation);
+    configMinInput.value = modeConfig.min;
+    configMaxInput.value = modeConfig.max;
+    configMultipleChoice.checked = modeConfig.multipleChoice;
+    configNumQuestionsSelect.value = modeConfig.numQuestions;
+    configSecondsInput.value = modeConfig.seconds;
   }
 
   /**
@@ -1042,15 +1561,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    config = {
-      operation: selectedOperation,
-      min: minVal,
-      max: maxVal,
-      multipleChoice: mcVal,
-      numQuestions: numQVal,
-      seconds: secondsVal,
-    };
+    setActiveOperation(selectedOperation);
+    const modeConfig = getModeConfig(selectedOperation);
+    modeConfig.min = minVal;
+    modeConfig.max = maxVal;
+    modeConfig.multipleChoice = mcVal;
+    modeConfig.numQuestions = numQVal;
+    modeConfig.seconds = secondsVal;
+    config.activeOperation = selectedOperation;
     localStorage.setItem('config', JSON.stringify(config));
+    fillConfigInputs(selectedOperation);
     // Actualizar botones de operación en inicio
     updateHomeOperationToggle();
     showScreen('home');
@@ -1060,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Actualizar el estado visual de los botones de operación en la pantalla de inicio
    */
   function updateHomeOperationToggle() {
-    if (config.operation === 'multiplication') {
+    if (getActiveOperation() === 'multiplication') {
       homeOpMulBtn.classList.add('active');
       homeOpDivBtn.classList.remove('active');
     } else {
@@ -1152,39 +1672,34 @@ document.addEventListener('DOMContentLoaded', () => {
      * una distribución más uniforme y evita repeticiones consecutivas.
      */
     // Construir lista de problemas ponderada en función del número de estrellas y los tiempos de repaso.
+    const activeSettings = getActiveModeConfig();
+    const operation = getActiveOperation();
+    const { min, max, numQuestions } = activeSettings;
     const base = [];
-    if (config.operation === 'multiplication') {
-      for (let a = config.min; a <= config.max; a++) {
-        for (let b = config.min; b <= config.max; b++) {
+    if (operation === 'multiplication') {
+      for (let a = min; a <= max; a++) {
+        for (let b = min; b <= max; b++) {
           base.push({ type: 'multiplication', a, b, answer: a * b });
         }
       }
     } else {
-      for (let divisor = config.min; divisor <= config.max; divisor++) {
-        for (let quotient = config.min; quotient <= config.max; quotient++) {
+      for (let divisor = min; divisor <= max; divisor++) {
+        for (let quotient = min; quotient <= max; quotient++) {
           const dividend = divisor * quotient;
           base.push({ type: 'division', dividend, divisor, answer: quotient });
         }
       }
     }
-    // Crear piscina ponderada según las estrellas (6-star) y el repaso espaciado.
+    // Crear piscina ponderada utilizando maestría, estrellas y repaso espaciado.
     let weighted = [];
     const now = Date.now();
     for (const prob of base) {
-      const key = createProblemKey(prob);
-      const starCount = stars[key] || 0;
-      let weight = 6 - starCount;
-      if (weight < 1) weight = 1;
-      const due = dueTimes[key] || 0;
-      // Si la combinación está al máximo de estrellas y aún no vence su repaso, no la añadimos
-      if (starCount === 5 && due > now) {
-        continue;
-      }
+      const weight = calculateProblemWeight(prob, { now });
       for (let w = 0; w < weight; w++) {
         weighted.push(prob);
       }
     }
-    // Si la piscina está vacía (todas aplazadas), usar la base una vez
+    // Si la piscina está vacía (datos insuficientes), usar la base una vez
     if (weighted.length === 0) {
       weighted = [...base];
     }
@@ -1193,7 +1708,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let poolIndex = 0;
     const list = [];
     let last = null;
-    for (let i = 0; i < config.numQuestions; i++) {
+    for (let i = 0; i < numQuestions; i++) {
       // Si agotamos la piscina, barajar de nuevo y evitar iniciar con el mismo problema que el último
       if (poolIndex >= pool.length) {
         let attempts = 0;
@@ -1207,7 +1722,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       let problem = pool[poolIndex];
       // Evitar que se repita el mismo problema o la misma tabla consecutivamente
-      if (weighted.length > 1 && last !== null && (isSameProblem(problem, last) || hasSameFactor(problem, last))) {
+      if (
+        weighted.length > 1 &&
+        last !== null &&
+        (isSameProblem(problem, last) || hasSameFactor(problem, last))
+      ) {
         for (let j = 1; j < pool.length; j++) {
           const candidate = pool[(poolIndex + j) % pool.length];
           if (!isSameProblem(candidate, last) && !hasSameFactor(candidate, last)) {
@@ -1275,13 +1794,11 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     const list = [];
     if (!selected || selected.length === 0) return list;
-    // Construir una piscina ponderada según las estrellas (6-star). No aplicamos repaso espaciado aquí.
+    // Construir una piscina ponderada tomando en cuenta maestría y repaso.
     let weightedSel = [];
+    const now = Date.now();
     for (const prob of selected) {
-      const key = createProblemKey(prob);
-      const starCount = stars[key] || 0;
-      let weight = 6 - starCount;
-      if (weight < 1) weight = 1;
+      const weight = calculateProblemWeight(prob, { now });
       for (let w = 0; w < weight; w++) {
         weightedSel.push(prob);
       }
@@ -1292,7 +1809,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let pool = shuffleArray([...weightedSel]);
     let poolIndex = 0;
     let last = null;
-    for (let i = 0; i < config.numQuestions; i++) {
+    const { numQuestions } = getActiveModeConfig();
+    for (let i = 0; i < numQuestions; i++) {
       if (poolIndex >= pool.length) {
         let attempts = 0;
         let newPool;
@@ -1500,7 +2018,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const problem = learnProblems[learnIndex];
     // Reiniciar bandera de intento incorrecto para este problema
     learningHasWrongAttempt = false;
-    learnProgressSpan.textContent = `${learnIndex + 1}/${config.numQuestions}`;
+    const { numQuestions, multipleChoice } = getActiveModeConfig();
+    learnProgressSpan.textContent = `${learnIndex + 1}/${numQuestions}`;
     if (problem.type === 'multiplication') {
       learnProblemDiv.textContent = `${problem.a} × ${problem.b} = ?`;
     } else {
@@ -1521,7 +2040,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Registrar momento de inicio de la pregunta para métricas
     learnQuestionStartTime = Date.now();
 
-    if (config.multipleChoice) {
+    if (multipleChoice) {
       // Generar y mostrar opciones
       const options = generateOptions(problem);
       options.forEach((value) => {
@@ -1610,6 +2129,13 @@ document.addEventListener('DOMContentLoaded', () => {
     stats.totalQuestions++;
     const now = Date.now();
     const timeTaken = now - learnQuestionStartTime;
+    recordProblemAttempt(currentProblem, {
+      correct: isCorrect,
+      timeTaken,
+      skipped: false,
+      mode: 'learning',
+      source: 'multiple-choice',
+    });
     if (isCorrect) {
       // Correcto: marcar la opción y actualizar métricas
       btn.classList.add('correct');
@@ -1671,6 +2197,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = Date.now();
     const timeTaken = now - learnQuestionStartTime;
     const isCorrect = value === correct;
+    recordProblemAttempt(currentProblem, {
+      correct: isCorrect,
+      timeTaken,
+      skipped: false,
+      mode: 'learning',
+      source: 'written',
+    });
     // Reiniciar variable para un nuevo intento o siguiente pregunta
     learnTypedAnswer = '';
     // Evaluar respuesta
@@ -1750,12 +2283,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (learnSkipBtn) {
       learnSkipBtn.style.display = 'none';
     }
-    if (learnIndex < config.numQuestions - 1) {
+    const { numQuestions } = getActiveModeConfig();
+    if (learnIndex < numQuestions - 1) {
       learnIndex++;
       renderLearningProblem();
     } else {
       // Mostrar resumen y volver a inicio tras una pausa
-      learnFeedbackDiv.textContent = `Respuestas correctas: ${learnCorrectCount} de ${config.numQuestions}`;
+      learnFeedbackDiv.textContent = `Respuestas correctas: ${learnCorrectCount} de ${numQuestions}`;
       learnFeedbackDiv.style.color = '#2c3e50';
       learnNextBtn.classList.add('hidden');
       setTimeout(() => {
@@ -1784,6 +2318,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderTrainingProblem() {
     const problem = trainProblems[trainIndex];
+    const { multipleChoice } = getActiveModeConfig();
     // Mostrar progreso basado en la longitud actual de la lista de problemas
     trainProgressSpan.textContent = `${trainIndex + 1}/${trainProblems.length}`;
     if (problem.type === 'multiplication') {
@@ -1791,6 +2326,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       trainProblemDiv.textContent = `${problem.dividend} ÷ ${problem.divisor} = ?`;
     }
+
+    trainQuestionStartTime = Date.now();
 
     trainFeedbackDiv.textContent = '';
     trainFeedbackDiv.style.color = '#2c3e50';
@@ -1809,7 +2346,7 @@ document.addEventListener('DOMContentLoaded', () => {
       startTrainTimer();
     }
 
-    if (config.multipleChoice) {
+    if (multipleChoice) {
       const options = generateOptions(problem);
       options.forEach((value) => {
         const btn = document.createElement('button');
@@ -1878,8 +2415,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
     }
-    trainTimeRemaining = config.seconds;
-    trainTotalSeconds = config.seconds;
+    const { seconds } = getActiveModeConfig();
+    trainTimeRemaining = seconds;
+    trainTotalSeconds = seconds;
     trainTimerFill.style.width = '100%';
     trainTimer = setInterval(() => {
       trainTimeRemaining -= 0.1;
@@ -1910,7 +2448,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     // Registrar la pregunta respondida
     stats.totalQuestions++;
+    const currentProblem = trainProblems[trainIndex];
+    const now = Date.now();
+    const timeTaken = now - trainQuestionStartTime;
     const isCorrect = value === correct;
+    recordProblemAttempt(currentProblem, {
+      correct: isCorrect,
+      timeTaken,
+      skipped: false,
+      mode: currentSpecificProblems ? 'specific' : 'training',
+      source: 'multiple-choice',
+    });
     if (isCorrect) {
       // Correcto: marcar en verde y continuar al siguiente problema
       trainCorrectCount++;
@@ -1965,8 +2513,18 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.disabled = true;
     });
     stats.totalQuestions++;
+    const currentProblem = trainProblems[trainIndex];
+    const now = Date.now();
+    const timeTaken = now - trainQuestionStartTime;
     const value = parseInt(trainTypedAnswer, 10);
     const isCorrect = value === correct;
+    recordProblemAttempt(currentProblem, {
+      correct: isCorrect,
+      timeTaken,
+      skipped: false,
+      mode: currentSpecificProblems ? 'specific' : 'training',
+      source: 'written',
+    });
     if (isCorrect) {
       // Correcto: sumar puntaje y continuar
       trainCorrectCount++;
@@ -2033,6 +2591,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Manejo de fallo durante el entrenamiento: ya sea por tiempo o respuesta incorrecta.
     if (trainTimer) {
       clearInterval(trainTimer);
+    }
+    const currentProblem = trainProblems[trainIndex];
+    if (currentProblem) {
+      const now = Date.now();
+      const timeTaken = now - trainQuestionStartTime;
+      recordProblemAttempt(currentProblem, {
+        correct: false,
+        timeTaken,
+        skipped: false,
+        mode: currentSpecificProblems ? 'specific' : 'training',
+        source: reason === 'time' ? 'timeout' : 'system',
+        timedOut: reason === 'time',
+      });
     }
     // Deshabilitar botones restantes
     trainAnswerArea.querySelectorAll('button').forEach((btn) => {
@@ -2115,7 +2686,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return rowsContainer;
     }
 
-    const operation = card.dataset.operation || config.operation || 'multiplication';
+    const operation = card.dataset.operation || getActiveOperation() || 'multiplication';
     const fragment = document.createDocumentFragment();
     for (let factor = 1; factor <= factorLimit; factor++) {
       const row = document.createElement('div');
@@ -2193,7 +2764,8 @@ document.addEventListener('DOMContentLoaded', () => {
     card.className = 'table-card';
     card.dataset.table = String(tableValue);
     card.dataset.factorLimit = String(factorLimit);
-    card.dataset.operation = config.operation;
+    const operation = getActiveOperation();
+    card.dataset.operation = operation;
     card.dataset.rendered = 'false';
 
     const header = document.createElement('div');
@@ -2201,7 +2773,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const title = document.createElement('h3');
     title.textContent =
-      config.operation === 'multiplication' ? `Tabla del ${tableValue}` : `Dividir por ${tableValue}`;
+      operation === 'multiplication' ? `Tabla del ${tableValue}` : `Dividir por ${tableValue}`;
     header.appendChild(title);
 
     const master = document.createElement('input');
@@ -2258,8 +2830,9 @@ document.addEventListener('DOMContentLoaded', () => {
     tablesContainer.innerHTML = '';
     tablesContainer.scrollTop = 0;
 
-    const minValue = Math.max(1, Math.min(config.min, config.max));
-    const maxValue = Math.max(1, Math.max(config.min, config.max));
+    const { min, max } = getActiveModeConfig();
+    const minValue = Math.max(1, Math.min(min, max));
+    const maxValue = Math.max(1, Math.max(min, max));
     const factorLimit = Math.max(1, maxValue);
     const tableValues = [];
     for (let value = minValue; value <= maxValue; value++) {
@@ -2334,6 +2907,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function init() {
     loadConfig();
     loadStats();
+    loadMastery();
     loadStars();
     loadDueTimes();
     loadIntervalStages();
@@ -2373,16 +2947,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    operationRadios.forEach((radio) => {
+      radio.addEventListener('change', () => {
+        if (radio.checked) {
+          fillConfigInputs(radio.value);
+        }
+      });
+    });
+
     // Botones de operación en la pantalla de inicio
     homeOpMulBtn.addEventListener('click', () => {
-      config.operation = 'multiplication';
+      setActiveOperation('multiplication');
       localStorage.setItem('config', JSON.stringify(config));
       updateHomeOperationToggle();
+      updateProgressBar();
     });
     homeOpDivBtn.addEventListener('click', () => {
-      config.operation = 'division';
+      setActiveOperation('division');
       localStorage.setItem('config', JSON.stringify(config));
       updateHomeOperationToggle();
+      updateProgressBar();
     });
     // Botones de configuración
     configBackBtn.addEventListener('click', () => {
@@ -2403,12 +2987,15 @@ document.addEventListener('DOMContentLoaded', () => {
       dueTimes = {};
       intervalStages = {};
       errorsToday = {};
+      masteryMap = {};
       saveStats();
       saveStars();
       saveDueTimes();
       saveIntervalStages();
       saveErrors();
+      saveMastery();
       updateProgressBar();
+      scheduleAssistantPanelRefresh();
       alert('Progreso eliminado');
     });
     // Botones de regreso en aprendizaje, entrenamiento y tablas
@@ -2472,6 +3059,15 @@ document.addEventListener('DOMContentLoaded', () => {
           renderStarRating(learnStarsDiv, updatedCount);
         }
         updateDailyStats(false, 0);
+        const skipNow = Date.now();
+        const skipTimeTaken = skipNow - learnQuestionStartTime;
+        recordProblemAttempt(problem, {
+          correct: false,
+          timeTaken: skipTimeTaken,
+          skipped: true,
+          mode: 'learning',
+          source: 'skip',
+        });
         // Ocultar el botón de salto para evitar múltiples clics
         learnSkipBtn.style.display = 'none';
         // Avanzar después de un breve retraso para dar tiempo a leer la respuesta
@@ -2518,13 +3114,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedRows = tablesContainer.querySelectorAll(
           '.row-checkbox:not(:disabled):checked'
         );
+        const operation = getActiveOperation();
         selectedRows.forEach((rowCb) => {
           const table = parseInt(rowCb.dataset.table, 10);
           const factor = parseInt(rowCb.dataset.factor, 10);
           if (Number.isNaN(table) || Number.isNaN(factor)) {
             return;
           }
-          if (config.operation === 'multiplication') {
+          if (operation === 'multiplication') {
             selectedProblems.push({
               type: 'multiplication',
               a: table,
