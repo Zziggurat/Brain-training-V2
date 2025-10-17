@@ -652,7 +652,18 @@ button:disabled {
 @media (max-width: 1024px) {
   :root {
     --mobile-wallpaper: url("https://raw.githubusercontent.com/Zziggurat/Brain-training/main/assets/ciudad-cyberpunk.png");
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
     --mobile-wallpaper-shift: 72px;
+
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
+    --mobile-wallpaper-shift: 72px;
+
+codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+    --mobile-wallpaper-shift: 72px;
+
+ main
+ main
+ main
   }
 
   html {
@@ -660,13 +671,37 @@ button:disabled {
     background-image: var(--mobile-wallpaper);
     background-size: cover;
     background-repeat: no-repeat;
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
     background-position: center calc(100% + var(--mobile-wallpaper-shift));
+
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
+    background-position: center calc(100% + var(--mobile-wallpaper-shift));
+
+ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+    background-position: center calc(100% + var(--mobile-wallpaper-shift));
+
+    background-position: center bottom;
+    background-attachment: fixed;
+ main
+ main
+ main
   }
 
   @supports (env(safe-area-inset-bottom)) {
     html {
       background-position: center
         calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
+      background-position: center
+        calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
+
+ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+      background-position: center
+        calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
+
+      background-position: center calc(100% + env(safe-area-inset-bottom));
+ main
+ main
     }
   }
 
@@ -711,8 +746,13 @@ button:disabled {
   #home-screen,
   #learning-screen,
   #training-screen {
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
     padding: calc(env(safe-area-inset-top, 0px) + 4px) 16px
       calc(env(safe-area-inset-bottom, 0px) + 12px);
+
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px
+      calc(env(safe-area-inset-bottom, 0px) + 16px);
+ main
   }
 
   #home-screen {
@@ -723,12 +763,16 @@ button:disabled {
 
   #learning-screen,
   #training-screen {
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
     gap: 4px;
   }
 
   #learning-screen .top-bar,
   #training-screen .top-bar {
     margin-bottom: 0;
+
+    gap: 8px;
+ main
   }
 
   #learning-screen .top-bar,
@@ -736,6 +780,7 @@ button:disabled {
     gap: 12px;
   }
 
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
   #learning-screen .problem-card,
   #training-screen .problem-card {
     padding: 4px 12px 6px;
@@ -748,6 +793,26 @@ button:disabled {
     min-height: auto;
     padding: 4px 0;
     gap: 0;
+
+  .problem-card {
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
+    padding: 6px 14px 8px;
+    border-radius: 18px;
+
+    padding: 10px 16px 12px;
+    border-radius: 22px;
+ main
+    margin-bottom: 0;
+  }
+
+  .card-front {
+    min-height: auto;
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
+    gap: 2px;
+
+    gap: 4px;
+ main
+ main
   }
 
   .stars {
