@@ -652,12 +652,16 @@ button:disabled {
 @media (max-width: 1024px) {
   :root {
     --mobile-wallpaper: url("https://raw.githubusercontent.com/Zziggurat/Brain-training/main/assets/ciudad-cyberpunk.png");
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
+    --mobile-wallpaper-shift: 72px;
+
  codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
     --mobile-wallpaper-shift: 72px;
 
 codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
     --mobile-wallpaper-shift: 72px;
 
+ main
  main
  main
   }
@@ -667,6 +671,9 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
     background-image: var(--mobile-wallpaper);
     background-size: cover;
     background-repeat: no-repeat;
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
+    background-position: center calc(100% + var(--mobile-wallpaper-shift));
+
  codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
     background-position: center calc(100% + var(--mobile-wallpaper-shift));
 
@@ -677,10 +684,13 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
     background-attachment: fixed;
  main
  main
+ main
   }
 
   @supports (env(safe-area-inset-bottom)) {
     html {
+      background-position: center
+        calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
  codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
       background-position: center
         calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
@@ -736,8 +746,13 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
   #home-screen,
   #learning-screen,
   #training-screen {
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
+    padding: calc(env(safe-area-inset-top, 0px) + 4px) 16px
+      calc(env(safe-area-inset-bottom, 0px) + 12px);
+
     padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px
       calc(env(safe-area-inset-bottom, 0px) + 16px);
+ main
   }
 
   #home-screen {
@@ -748,13 +763,36 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
 
   #learning-screen,
   #training-screen {
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
+    gap: 4px;
+  }
+
+  #learning-screen .top-bar,
+  #training-screen .top-bar {
+    margin-bottom: 0;
+
     gap: 8px;
+ main
   }
 
   #learning-screen .top-bar,
   #training-screen .top-bar {
     gap: 12px;
   }
+
+ codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
+  #learning-screen .problem-card,
+  #training-screen .problem-card {
+    padding: 4px 12px 6px;
+    border-radius: 16px;
+    margin-bottom: 0;
+  }
+
+  #learning-screen .card-front,
+  #training-screen .card-front {
+    min-height: auto;
+    padding: 4px 0;
+    gap: 0;
 
   .problem-card {
  codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
@@ -774,6 +812,7 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
 
     gap: 4px;
  main
+ main
   }
 
   .stars {
@@ -788,6 +827,7 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
   .answer-area {
     gap: 6px;
     align-items: stretch;
+    margin-top: 2px;
   }
 
   .numeric-display {
