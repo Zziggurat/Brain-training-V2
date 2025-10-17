@@ -2000,6 +2000,64 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Crear un botón de borrado que evita saltos de diseño por doble toque en móviles.
+   * @param {Function} onDelete - Acción a ejecutar cuando se borra un dígito.
+   * @returns {HTMLButtonElement} Botón configurado.
+   */
+  function createDeleteKey(onDelete) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = '⌫';
+    button.className = 'num-btn delete-btn';
+
+    let skipNextClick = false;
+    let skipResetHandle = null;
+
+    const clearSkip = () => {
+      skipNextClick = false;
+      if (skipResetHandle) {
+        clearTimeout(skipResetHandle);
+        skipResetHandle = null;
+      }
+    };
+
+    button.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+        skipNextClick = true;
+        event.preventDefault();
+      }
+    });
+
+    button.addEventListener('pointerup', (event) => {
+      if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+        event.preventDefault();
+        onDelete();
+        if (skipResetHandle) {
+          clearTimeout(skipResetHandle);
+        }
+        skipResetHandle = setTimeout(() => {
+          clearSkip();
+        }, 350);
+      }
+    });
+
+    button.addEventListener('pointercancel', () => {
+      clearSkip();
+    });
+
+    button.addEventListener('click', (event) => {
+      if (skipNextClick) {
+        event.preventDefault();
+        clearSkip();
+        return;
+      }
+      onDelete();
+    });
+
+    return button;
+  }
+
+  /**
    * Iniciar una sesión de aprendizaje.
    */
   function startLearningSession() {
@@ -2075,10 +2133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.appendChild(b);
       });
       // Botón borrar
-      const delBtn = document.createElement('button');
-      delBtn.textContent = '⌫';
-      delBtn.className = 'num-btn delete-btn';
-      delBtn.addEventListener('click', () => {
+      const delBtn = createDeleteKey(() => {
         learnTypedAnswer = learnTypedAnswer.slice(0, -1);
         display.textContent = learnTypedAnswer;
       });
@@ -2379,10 +2434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         grid.appendChild(b);
       });
-      const delBtn = document.createElement('button');
-      delBtn.textContent = '⌫';
-      delBtn.className = 'num-btn delete-btn';
-      delBtn.addEventListener('click', () => {
+      const delBtn = createDeleteKey(() => {
         trainTypedAnswer = trainTypedAnswer.slice(0, -1);
         display.textContent = trainTypedAnswer;
       });
