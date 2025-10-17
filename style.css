@@ -50,7 +50,19 @@ body {
 }
 
 html {
-  background: #05070d url("assets/ciudad-cyberpunk.png") center / cover no-repeat fixed;
+  background-color: #05070d;
+}
+
+html::before {
+  content: "";
+  position: fixed;
+  inset: calc(-1 * env(safe-area-inset-top, 0px))
+    calc(-1 * env(safe-area-inset-right, 0px))
+    calc(-1 * env(safe-area-inset-bottom, 0px))
+    calc(-1 * env(safe-area-inset-left, 0px));
+  background: url("assets/ciudad-cyberpunk.png") center / cover no-repeat;
+  z-index: -1;
+  pointer-events: none;
 }
 
 body {
