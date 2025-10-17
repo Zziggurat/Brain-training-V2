@@ -746,13 +746,8 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
   #home-screen,
   #learning-screen,
   #training-screen {
- codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
-    padding: calc(env(safe-area-inset-top, 0px) + 4px) 16px
-      calc(env(safe-area-inset-bottom, 0px) + 12px);
-
     padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px
       calc(env(safe-area-inset-bottom, 0px) + 16px);
- main
   }
 
   #home-screen {
@@ -763,96 +758,68 @@ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
 
   #learning-screen,
   #training-screen {
- codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
-    gap: 4px;
-  }
-
-  #learning-screen .top-bar,
-  #training-screen .top-bar {
-    margin-bottom: 0;
-
-    gap: 8px;
- main
+    gap: 6px;
   }
 
   #learning-screen .top-bar,
   #training-screen .top-bar {
     gap: 12px;
+    margin-bottom: 0;
   }
 
- codex/reduce-tamano-de-ventana-en-version-movil-4g0e8s
   #learning-screen .problem-card,
   #training-screen .problem-card {
-    padding: 4px 12px 6px;
-    border-radius: 16px;
+    padding: 8px 16px 10px;
+    border-radius: 18px;
     margin-bottom: 0;
   }
 
   #learning-screen .card-front,
   #training-screen .card-front {
     min-height: auto;
-    padding: 4px 0;
-    gap: 0;
-
-  .problem-card {
- codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
-    padding: 6px 14px 8px;
-    border-radius: 18px;
-
-    padding: 10px 16px 12px;
-    border-radius: 22px;
- main
-    margin-bottom: 0;
-  }
-
-  .card-front {
-    min-height: auto;
- codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
-    gap: 2px;
-
-    gap: 4px;
- main
- main
+    padding: 0;
+    gap: 6px;
   }
 
   .stars {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .problem {
-    font-size: 42px;
+    font-size: 40px;
     line-height: 1.05;
   }
 
   .answer-area {
-    gap: 6px;
+    width: 100%;
+    gap: 4px;
     align-items: stretch;
     margin-top: 2px;
   }
 
   .numeric-display {
-    min-height: 36px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    letter-spacing: 1.2px;
+    min-height: 0;
+    padding: 6px 12px;
+    border-radius: 18px;
+    letter-spacing: 1.4px;
     font-size: 28px;
   }
 
   .num-keypad {
     gap: 8px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    transform: translateX(-16px);
+    transform: none;
   }
 
   .num-btn {
-    min-height: 54px;
+    min-height: 52px;
     padding: 12px 0;
     font-size: 24px;
     border-radius: 18px;
   }
 
   .delete-btn {
-    font-size: 32px;
+    font-size: 30px;
   }
 
   #learn-feedback,
@@ -1128,6 +1095,9 @@ input[type="checkbox"] {
   justify-content: center;
   min-height: 76px;
   padding: 18px 0;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
   transition: transform 0.12s ease, box-shadow 0.2s ease;
 }
 
