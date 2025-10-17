@@ -42,40 +42,43 @@ video {
 html,
 body {
   margin: 0;
-  padding: 0;
   height: 100%;
-  background-color: #05070d;
-  background-image: url("assets/ciudad-cyberpunk.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
+  overflow: hidden;
 }
 
 body {
   font-family: "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
-  min-height: 100dvh;
   color: var(--text-color);
   display: flex;
   justify-content: center;
   align-items: stretch;
   line-height: 1.5;
+  background: transparent;
+}
+
+.app {
+  width: 100%;
+  height: 100dvh;
+  overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: #05070d url("assets/ciudad-cyberpunk.png") center / cover no-repeat;
+  padding: env(safe-area-inset-top, 0px) calc(env(safe-area-inset-right, 0px) + clamp(16px, 4vw, 40px))
+    env(safe-area-inset-bottom, 0px) calc(env(safe-area-inset-left, 0px) + clamp(16px, 4vw, 40px));
+  scrollbar-width: none;
+}
+
+.app::-webkit-scrollbar {
+  display: none;
 }
 
 #app {
   width: min(100%, var(--app-max-width));
-  min-height: 100vh;
-  min-height: 100dvh;
   position: relative;
   display: flex;
   flex-direction: column;
   margin: 0 auto;
-  padding: 0 clamp(16px, 4vw, 40px);
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: calc(env(safe-area-inset-left, 0px) + clamp(16px, 4vw, 40px));
-  padding-right: calc(env(safe-area-inset-right, 0px) + clamp(16px, 4vw, 40px));
   background: transparent;
   overflow: visible;
 }
@@ -100,14 +103,7 @@ button:disabled {
     calc(env(safe-area-inset-bottom, 0px) + 32px);
   position: relative;
   box-sizing: border-box;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.screen::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
 }
 
 .screen.active {
@@ -143,35 +139,14 @@ button:disabled {
 #home-screen {
   align-items: center;
   gap: clamp(24px, 6vh, 48px);
-  overflow-x: hidden;
-  overflow-y: auto;
   position: relative;
   scrollbar-gutter: stable both-edges;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-#home-screen::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-#learning-screen,
-#training-screen {
-  scrollbar-width: none;
-}
-
-#learning-screen::-webkit-scrollbar,
-#training-screen::-webkit-scrollbar {
-  display: none;
 }
 
 #learning-screen,
 #training-screen {
   align-items: center;
   justify-content: flex-start;
-  overflow-x: hidden;
-  overflow-y: hidden;
   padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
@@ -179,13 +154,6 @@ button:disabled {
 #learning-screen.active,
 #training-screen.active {
   gap: 18px;
-}
-
-#config-screen,
-#tables-screen,
-#progress-screen {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 #learning-screen .top-bar,
