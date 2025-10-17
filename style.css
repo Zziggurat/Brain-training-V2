@@ -652,7 +652,14 @@ button:disabled {
 @media (max-width: 1024px) {
   :root {
     --mobile-wallpaper: url("https://raw.githubusercontent.com/Zziggurat/Brain-training/main/assets/ciudad-cyberpunk.png");
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
     --mobile-wallpaper-shift: 72px;
+
+codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+    --mobile-wallpaper-shift: 72px;
+
+ main
+ main
   }
 
   html {
@@ -660,13 +667,31 @@ button:disabled {
     background-image: var(--mobile-wallpaper);
     background-size: cover;
     background-repeat: no-repeat;
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
     background-position: center calc(100% + var(--mobile-wallpaper-shift));
+
+ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+    background-position: center calc(100% + var(--mobile-wallpaper-shift));
+
+    background-position: center bottom;
+    background-attachment: fixed;
+ main
+ main
   }
 
   @supports (env(safe-area-inset-bottom)) {
     html {
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
       background-position: center
         calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
+
+ codex/reduce-tamano-de-ventana-en-version-movil-pcnm5a
+      background-position: center
+        calc(100% + env(safe-area-inset-bottom) + var(--mobile-wallpaper-shift));
+
+      background-position: center calc(100% + env(safe-area-inset-bottom));
+ main
+ main
     }
   }
 
@@ -732,14 +757,23 @@ button:disabled {
   }
 
   .problem-card {
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
     padding: 6px 14px 8px;
     border-radius: 18px;
+
+    padding: 10px 16px 12px;
+    border-radius: 22px;
+ main
     margin-bottom: 0;
   }
 
   .card-front {
     min-height: auto;
+ codex/reduce-tamano-de-ventana-en-version-movil-mxf8qg
     gap: 2px;
+
+    gap: 4px;
+ main
   }
 
   .stars {
