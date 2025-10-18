@@ -6,7 +6,13 @@
   <!-- Vista ajustada para evitar zoom en móviles: bloquea pinch zoom y mantiene el mismo tamaño -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Brain training</title>
-  <link rel="stylesheet" href="style.css?v=r-20241102-1505" />
+  <link
+    rel="preload"
+    as="image"
+    href="assets/ciudad-cyberpunk.png?r=20241102-1512"
+  />
+  <link rel="stylesheet" href="style.css?r=20241102-1512" />
+  <script defer src="script.js?r=20241102-1512"></script>
 
   <!-- Manifesto y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -19,6 +25,44 @@
   <link rel="apple-touch-icon" href="icon-192.png" />
   <!-- Color de tema para navegadores compatibles -->
   <meta name="theme-color" content="#3498db" />
+  <style>
+    html {
+      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1512") no-repeat center center fixed;
+      background-size: cover;
+    }
+    body {
+      background: transparent;
+      margin: 0;
+    }
+    #app,
+    .app,
+    .overlay,
+    .container,
+    .wrapper,
+    .main,
+    .page {
+      background: transparent;
+    }
+    html::before,
+    html::after,
+    body::before,
+    body::after,
+    #app::before,
+    #app::after,
+    .overlay::before,
+    .overlay::after,
+    .container::before,
+    .container::after,
+    .wrapper::before,
+    .wrapper::after,
+    .main::before,
+    .main::after,
+    .page::before,
+    .page::after {
+      content: none;
+      background: transparent;
+    }
+  </style>
 </head>
 <body>
   <div id="app" class="app">
@@ -204,6 +248,5 @@
 
   </div>
 
-  <script src="script.js?v=r-20241102-1505"></script>
 </body>
 </html>
