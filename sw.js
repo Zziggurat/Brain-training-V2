@@ -4,6 +4,8 @@
  * allowing new loads to proceed without a service worker.
  */
 
+const CACHE_VERSION = 'brain-training-v5';
+
 self.addEventListener('install', (event) => {
   // Take control as soon as we're installed so we can unregister.
   self.skipWaiting();
@@ -14,7 +16,11 @@ self.addEventListener('activate', (event) => {
     (async () => {
       // Drop any caches the previous worker created.
       const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+      const cachesToDelete = cacheNames.filter((cacheName) => cacheName !== CACHE_VERSION);
+      await Promise.all(cachesToDelete.map((cacheName) => caches.delete(cacheName)));
+
+      // Take control immediately so the cleaned clients render the fresh background.
+      await self.clients.claim();
 
       // Unregister this worker so the app runs without a SW going forward.
       await self.registration.unregister();
