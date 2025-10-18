@@ -4,8 +4,8 @@
  * they never get stuck behind stale caches.
  */
 
-const CACHE_NAME = 'brain-training-v6';
-const PRECACHE_ASSETS = ['/', 'index.html', 'manifest.json', 'script.js?v=6'];
+const CACHE_NAME = 'brain-training-v8';
+const PRECACHE_ASSETS = ['/', 'index.html', 'manifest.json', 'script.js?v=8'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -45,7 +45,7 @@ self.addEventListener('fetch', (event) => {
   const isBypassedAsset =
     url.pathname.endsWith('/assets/ciudad-cyberpunk.png') || url.pathname.endsWith('/style.css');
 
-  if (isBypassedAsset && url.search.includes('v=')) {
+  if (isBypassedAsset && url.searchParams.has('v')) {
     event.respondWith(
       (async () => {
         try {
