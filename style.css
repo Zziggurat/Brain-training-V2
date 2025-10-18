@@ -1072,17 +1072,6 @@ input[type="checkbox"] {
 .problem-card.flip .card-front {
   animation: flip-card 0.6s forwards;
 }
-html,
-body {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background: #0b0f1a url("assets/ciudad-cyberpunk.png?v=5") no-repeat center center fixed;
-  background-size: cover;
-}
-
 #app,
 .app {
   position: relative;
@@ -1095,7 +1084,6 @@ body {
   -webkit-overflow-scrolling: touch;
   padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 32px);
   box-sizing: border-box;
-  background: transparent;
   scrollbar-width: none;
 }
 
@@ -1105,10 +1093,34 @@ body {
 }
 
 .panel,
-.card,
-.container {
+.card {
   background: rgba(30, 32, 36, 0.55);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: 24px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0b0f1a url("assets/ciudad-cyberpunk.png?v=6") no-repeat center center fixed !important;
+  background-size: cover;
+}
+
+#app,
+.app {
+  background: transparent !important;
+  min-height: 100%;
+}
+
+.overlay,
+.container,
+.wrapper,
+.main,
+.page {
+  background: transparent !important;
 }
