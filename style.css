@@ -47,14 +47,6 @@ body {
   line-height: 1.5;
 }
 
-#app,
-.app {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
 button {
   font-family: inherit;
   border: none;
@@ -1090,7 +1082,12 @@ body {
 
 #app,
 .app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   height: 100dvh;
+  min-height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
