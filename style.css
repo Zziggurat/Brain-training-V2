@@ -51,6 +51,8 @@ body {
     Arial, sans-serif;
   color: var(--text-color);
   line-height: 1.5;
+  min-height: 100dvh;
+  background: #05070d url("assets/ciudad-cyberpunk.png") center / cover no-repeat;
 }
 
 .app {
@@ -59,7 +61,6 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  background: url("assets/ciudad-cyberpunk.png") center / cover no-repeat;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
   box-sizing: border-box;
