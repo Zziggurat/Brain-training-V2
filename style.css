@@ -1091,7 +1091,7 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  background-image: url("./assets/ciudad-cyberpunk.png") !important;
+  background-image: url("./assets/ciudad-cyberpunk.png?v=bgfix-20241111") !important;
   background-position: center !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
