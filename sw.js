@@ -1,33 +1,98 @@
 /*
- * Service worker placeholder that immediately unregisters itself.
- * Keeps legacy installations from holding onto cached assets while
- * allowing new loads to proceed without a service worker.
+ * Service worker that refreshes cached assets each release while
+ * keeping the cyberpunk background and stylesheet network-first so
+ * they never get stuck behind stale caches.
  */
 
+const CACHE_NAME = 'brain-training-v8';
+const PRECACHE_ASSETS = ['/', 'index.html', 'manifest.json', 'script.js?v=8'];
+
 self.addEventListener('install', (event) => {
-  // Take control as soon as we're installed so we can unregister.
-  self.skipWaiting();
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll(PRECACHE_ASSETS);
+      self.skipWaiting();
+    })()
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Drop any caches the previous worker created.
       const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
-
-      // Unregister this worker so the app runs without a SW going forward.
-      await self.registration.unregister();
-
-      // Refresh open clients so they pick up the non-SW controlled version.
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      clients.forEach((client) => {
-        client.navigate(client.url);
-      });
+      await Promise.all(
+        cacheNames.filter((cacheName) => cacheName !== CACHE_NAME).map((cacheName) => caches.delete(cacheName))
+      );
+      await self.clients.claim();
     })()
   );
 });
 
-self.addEventListener('fetch', () => {
-  // No-op fetch handler keeps the worker from attempting to respond with stale cache.
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  const url = new URL(request.url);
+
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const isBypassedAsset =
+    url.pathname.endsWith('/assets/ciudad-cyberpunk.png') || url.pathname.endsWith('/style.css');
+
+  if (isBypassedAsset && url.searchParams.has('v')) {
+    event.respondWith(
+      (async () => {
+        try {
+          return await fetch(request, { cache: 'no-store' });
+        } catch (error) {
+          const cache = await caches.open(CACHE_NAME);
+          const fallback = await cache.match(request);
+          if (fallback) {
+            return fallback;
+          }
+          throw error;
+        }
+      })()
+    );
+    return;
+  }
+
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cachedResponse = await cache.match(request);
+
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      try {
+        const networkResponse = await fetch(request);
+
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          (networkResponse.type === 'basic' || networkResponse.type === 'cors')
+        ) {
+          cache.put(request, networkResponse.clone());
+        }
+
+        return networkResponse;
+      } catch (error) {
+        if (request.mode === 'navigate') {
+          const fallback = await cache.match('index.html');
+          if (fallback) {
+            return fallback;
+          }
+        }
+        throw error;
+      }
+    })()
+  );
 });
