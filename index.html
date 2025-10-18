@@ -9,10 +9,10 @@
   <link
     rel="preload"
     as="image"
-    href="assets/ciudad-cyberpunk.png?ver=20241102-1511"
+    href="assets/ciudad-cyberpunk.png?r=20241102-1512"
   />
-  <link rel="stylesheet" href="style.css?ver=20241102-1511" />
-  <script defer src="script.js?ver=20241102-1511"></script>
+  <link rel="stylesheet" href="style.css?r=20241102-1512" />
+  <script defer src="script.js?r=20241102-1512"></script>
 
   <!-- Manifesto y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -26,23 +26,41 @@
   <!-- Color de tema para navegadores compatibles -->
   <meta name="theme-color" content="#3498db" />
   <style>
-  html{
-    background:#0b0f1a url("assets/ciudad-cyberpunk.png?ver=20241102-1511")
-               no-repeat center center fixed !important;
-    background-size:cover !important;
-  }
-  body{ background:transparent !important; margin:0 !important; }
-  #app, .overlay, .container, .wrapper, .main, .page{ background:transparent !important; }
-  html::before, html::after,
-  body::before, body::after,
-  #app::before, #app::after,
-  .overlay::before, .overlay::after,
-  .container::before, .container::after,
-  .wrapper::before, .wrapper::after,
-  .main::before, .main::after,
-  .page::before, .page::after{
-    content:none !important; background:transparent !important;
-  }
+    html {
+      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1512") no-repeat center center fixed;
+      background-size: cover;
+    }
+    body {
+      background: transparent;
+      margin: 0;
+    }
+    #app,
+    .overlay,
+    .container,
+    .wrapper,
+    .main,
+    .page {
+      background: transparent;
+    }
+    html::before,
+    html::after,
+    body::before,
+    body::after,
+    #app::before,
+    #app::after,
+    .overlay::before,
+    .overlay::after,
+    .container::before,
+    .container::after,
+    .wrapper::before,
+    .wrapper::after,
+    .main::before,
+    .main::after,
+    .page::before,
+    .page::after {
+      content: none;
+      background: transparent;
+    }
   </style>
 </head>
 <body>
