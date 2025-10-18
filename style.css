@@ -50,11 +50,7 @@ body {
   font-family: "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
   color: var(--text-color);
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
   line-height: 1.5;
-  background: transparent;
 }
 
 .app {
