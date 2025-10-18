@@ -46,11 +46,25 @@ body {
   overflow: hidden;
 }
 
+html {
+  background-color: #05070d;
+}
+
 body {
   font-family: "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
   color: var(--text-color);
   line-height: 1.5;
+  min-height: 100dvh;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: #05070d url("./assets/ciudad-cyberpunk.png") center / cover no-repeat;
+  z-index: -1;
 }
 
 .app {
@@ -59,7 +73,6 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  background: url("assets/ciudad-cyberpunk.png") center / cover no-repeat;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
   box-sizing: border-box;
