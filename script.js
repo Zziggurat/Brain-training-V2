@@ -2608,6 +2608,8 @@ document.addEventListener('DOMContentLoaded', () => {
       mode: isSpecificTrainingActive() ? 'specific' : 'training',
       source: 'multiple-choice',
     });
+    const isSpecificContext = trainingSessionContext === TRAINING_CONTEXT.SPECIFIC;
+
     if (isCorrect) {
       // Correcto: marcar en verde y continuar al siguiente problema
       trainCorrectCount++;
@@ -2620,29 +2622,35 @@ document.addEventListener('DOMContentLoaded', () => {
       // Esperar brevemente y avanzar al siguiente problema
       scheduleNextTrainingQuestion(500);
     } else {
-      buttons.forEach((b) => {
-        const val = parseInt(b.textContent, 10);
-        if (val === correct) {
-          b.classList.add('correct');
-        } else {
-          b.classList.add('incorrect');
-        }
-      });
       trainingHasMistake = true;
-      if (trainingSessionContext === TRAINING_CONTEXT.GENERAL) {
-        trainFeedbackDiv.textContent = '¡Respuesta incorrecta!';
+      if (isSpecificContext) {
+        btn.classList.add('incorrect');
+        trainFeedbackDiv.textContent = 'Respuesta incorrecta. Intenta nuevamente o usa "Mostrar respuesta".';
         trainFeedbackDiv.style.color = '#c0392b';
         saveStats();
-        handleTrainFail('wrong');
+        applyTrainingSkipPolicy();
+        buttons.forEach((b) => {
+          if (b === btn) {
+            return;
+          }
+          b.disabled = false;
+          b.classList.remove('incorrect');
+          b.classList.remove('correct');
+        });
+        btn.disabled = true;
       } else {
-        trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correct}.`;
+        buttons.forEach((b) => {
+          const val = parseInt(b.textContent, 10);
+          if (val === correct) {
+            b.classList.add('correct');
+          } else {
+            b.classList.add('incorrect');
+          }
+        });
         trainFeedbackDiv.style.color = '#c0392b';
         saveStats();
-        if (trainSkipBtn) {
-          trainSkipBtn.classList.remove('hidden');
-          trainSkipBtn.disabled = true;
-        }
-        scheduleNextTrainingQuestion(1000);
+        const correctText = String(correct);
+        handleTrainFail('wrong', correctText);
       }
     }
   }
@@ -2675,6 +2683,8 @@ document.addEventListener('DOMContentLoaded', () => {
       mode: isSpecificTrainingActive() ? 'specific' : 'training',
       source: 'written',
     });
+    const isSpecificContext = trainingSessionContext === TRAINING_CONTEXT.SPECIFIC;
+
     if (isCorrect) {
       // Correcto: sumar puntaje y continuar
       trainCorrectCount++;
@@ -2688,21 +2698,24 @@ document.addEventListener('DOMContentLoaded', () => {
       trainingHasMistake = true;
       const correctText = String(correct);
       display.classList.add('incorrect');
-      display.textContent = correctText;
-      if (trainingSessionContext === TRAINING_CONTEXT.GENERAL) {
-        trainFeedbackDiv.textContent = '¡Respuesta incorrecta!';
+      if (isSpecificContext) {
+        trainFeedbackDiv.textContent = 'Respuesta incorrecta. Intenta nuevamente o usa "Mostrar respuesta".';
         trainFeedbackDiv.style.color = '#c0392b';
         saveStats();
-        handleTrainFail('wrong');
+        applyTrainingSkipPolicy();
+        trainAnswerArea.querySelectorAll('button').forEach((btn) => {
+          btn.disabled = false;
+        });
+        trainTypedAnswer = '';
+        setTimeout(() => {
+          display.classList.remove('incorrect');
+        }, 220);
+        display.textContent = '';
       } else {
-        trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correctText}.`;
+        display.textContent = correctText;
         trainFeedbackDiv.style.color = '#c0392b';
         saveStats();
-        if (trainSkipBtn) {
-          trainSkipBtn.classList.remove('hidden');
-          trainSkipBtn.disabled = true;
-        }
-        scheduleNextTrainingQuestion(1000);
+        handleTrainFail('wrong', correctText);
       }
     }
   }
@@ -2742,7 +2755,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Manejar finalización del entrenamiento por error o tiempo.
    * @param {string} reason - 'time' o 'wrong'.
    */
-  function handleTrainFail(reason) {
+  function handleTrainFail(reason, correctAnswerText = null) {
     // Manejo de fallo durante el entrenamiento: ya sea por tiempo o respuesta incorrecta.
     if (trainTimer) {
       clearInterval(trainTimer);
@@ -2769,6 +2782,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mostrar mensaje según el tipo de fallo
     if (reason === 'time') {
       trainFeedbackDiv.textContent = '¡Tiempo agotado! Sesión terminada.';
+    } else if (typeof correctAnswerText === 'string' && correctAnswerText.length > 0) {
+      trainFeedbackDiv.textContent = `¡Respuesta incorrecta! La Respuesta es ${correctAnswerText}.`;
     } else {
       trainFeedbackDiv.textContent = '¡Respuesta incorrecta! Sesión terminada.';
     }

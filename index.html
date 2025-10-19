@@ -23,13 +23,31 @@
   <!-- DEPLOY_CHECK v1514 Diego -->
   <style>
     html {
-      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
+      background-color: #0b0f1a;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-attachment: fixed;
       background-size: cover;
+      overflow-x: hidden;
+      overflow-y: hidden;
+      min-height: 100dvh;
+      width: 100%;
     }
     body {
-      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
+      background-color: #0b0f1a;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-attachment: fixed;
       background-size: cover;
       margin: 0;
+      min-height: 100dvh;
+      width: 100%;
+      overflow-x: hidden;
+      overflow-y: hidden;
     }
     #app,
     .app,
