@@ -35,9 +35,17 @@
       overflow-y: hidden;
       overscroll-behavior: none;
       background-color: #0b0f1a;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      background-attachment: fixed;
     }
     body {
       touch-action: manipulation;
+      position: relative;
+      isolation: isolate;
     }
     body::before {
       content: "";
@@ -53,7 +61,11 @@
       background-position: center center;
       background-size: cover;
       pointer-events: none;
-      z-index: -1;
+      z-index: 0;
+    }
+    #app {
+      position: relative;
+      z-index: 1;
     }
     #app,
     .app,
