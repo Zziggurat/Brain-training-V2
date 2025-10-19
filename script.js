@@ -83,6 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     trainSkipBtn.classList.add('hidden');
   }
 
+  const TRAINING_CONTEXT = Object.freeze({
+    GENERAL: 'general',
+    SPECIFIC: 'specific',
+  });
+  let trainingSessionContext = TRAINING_CONTEXT.GENERAL;
+  let trainingHasMistake = false;
+
   // Elementos de la pantalla de progreso
   const progressBackBtn = document.getElementById('progress-back-btn');
   const heatmapContainer = document.getElementById('heatmap-container');
@@ -1532,6 +1539,21 @@ document.addEventListener('DOMContentLoaded', () => {
     trainSkipBtn.disabled = true;
   }
 
+  function applyTrainingSkipPolicy() {
+    if (!trainSkipBtn) return;
+    if (trainingSessionContext === TRAINING_CONTEXT.SPECIFIC && trainingHasMistake) {
+      showTrainSkipButton();
+    } else {
+      hideTrainSkipButton();
+    }
+  }
+
+  function configureTrainingSession(context) {
+    trainingSessionContext = context;
+    trainingHasMistake = false;
+    applyTrainingSkipPolicy();
+  }
+
   function scheduleNextTrainingQuestion(delay = 800) {
     const advance = () => {
       if (trainIndex < trainProblems.length - 1) {
@@ -2429,6 +2451,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Iniciar sesión de entrenamiento.
    */
   function startTrainingSession() {
+    configureTrainingSession(TRAINING_CONTEXT.GENERAL);
     trainProblems = generateProblems();
     trainIndex = 0;
     trainCorrectCount = 0;
@@ -2455,10 +2478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     trainQuestionStartTime = Date.now();
-    showTrainSkipButton();
-    if (trainSkipBtn) {
-      trainSkipBtn.disabled = false;
-    }
+    applyTrainingSkipPolicy();
 
     trainFeedbackDiv.textContent = '';
     trainFeedbackDiv.style.color = '#2c3e50';
@@ -2600,9 +2620,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Esperar brevemente y avanzar al siguiente problema
       scheduleNextTrainingQuestion(500);
     } else {
-      // Incorrecto: marcar opciones y mostrar respuesta correcta sin finalizar sesión
-      trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correct}.`;
-      trainFeedbackDiv.style.color = '#c0392b';
       buttons.forEach((b) => {
         const val = parseInt(b.textContent, 10);
         if (val === correct) {
@@ -2611,9 +2628,22 @@ document.addEventListener('DOMContentLoaded', () => {
           b.classList.add('incorrect');
         }
       });
-      // Guardar estadísticas
-      saveStats();
-      scheduleNextTrainingQuestion(1000);
+      trainingHasMistake = true;
+      if (trainingSessionContext === TRAINING_CONTEXT.GENERAL) {
+        trainFeedbackDiv.textContent = '¡Respuesta incorrecta!';
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        handleTrainFail('wrong');
+      } else {
+        trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correct}.`;
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        if (trainSkipBtn) {
+          trainSkipBtn.classList.remove('hidden');
+          trainSkipBtn.disabled = true;
+        }
+        scheduleNextTrainingQuestion(1000);
+      }
     }
   }
 
@@ -2655,15 +2685,25 @@ document.addEventListener('DOMContentLoaded', () => {
       saveStats();
       scheduleNextTrainingQuestion(500);
     } else {
-      // Incorrecto: mostrar la respuesta correcta y continuar
-      display.classList.add('incorrect');
+      trainingHasMistake = true;
       const correctText = String(correct);
+      display.classList.add('incorrect');
       display.textContent = correctText;
-      trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correctText}.`;
-      trainFeedbackDiv.style.color = '#c0392b';
-      // Guardar estadísticas
-      saveStats();
-      scheduleNextTrainingQuestion(1000);
+      if (trainingSessionContext === TRAINING_CONTEXT.GENERAL) {
+        trainFeedbackDiv.textContent = '¡Respuesta incorrecta!';
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        handleTrainFail('wrong');
+      } else {
+        trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correctText}.`;
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        if (trainSkipBtn) {
+          trainSkipBtn.classList.remove('hidden');
+          trainSkipBtn.disabled = true;
+        }
+        scheduleNextTrainingQuestion(1000);
+      }
     }
   }
 
@@ -2708,6 +2748,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearInterval(trainTimer);
     }
     disableTrainSkipButton();
+    applyTrainingSkipPolicy();
     const currentProblem = trainProblems[trainIndex];
     if (currentProblem) {
       const now = Date.now();
@@ -2749,6 +2790,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isSpecificTrainingActive()) {
       return;
     }
+    configureTrainingSession(TRAINING_CONTEXT.SPECIFIC);
     trainProblems = generateSpecificProblems(currentSpecificSelection);
     trainIndex = 0;
     trainCorrectCount = 0;

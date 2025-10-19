@@ -1131,6 +1131,12 @@ body {
   margin: 0;
   min-height: 100%;
   background-color: #05070d;
+  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+    url("assets/ciudad-cyberpunk.png");
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-attachment: fixed;
+  background-size: cover;
   color: var(--text-color);
   overflow: hidden;
   overscroll-behavior: none;
