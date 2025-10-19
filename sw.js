@@ -55,10 +55,20 @@ self.addEventListener('fetch', (event) => {
   if (isBypassedAsset) {
     event.respondWith(
       (async () => {
+        const cache = await caches.open(CACHE_NAME);
         try {
-          return await fetch(request, { cache: 'no-store' });
+          const networkResponse = await fetch(request, { cache: 'no-store' });
+
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            (networkResponse.type === 'basic' || networkResponse.type === 'cors')
+          ) {
+            await cache.put(request, networkResponse.clone());
+          }
+
+          return networkResponse;
         } catch (error) {
-          const cache = await caches.open(CACHE_NAME);
           const fallback = await cache.match(request);
           if (fallback) {
             return fallback;
