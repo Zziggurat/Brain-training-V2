@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const startSpecificBtn = document.getElementById('start-specific-btn');
 
   // Almacena la lista de problemas del entrenamiento específico actual (si existe)
-  let currentSpecificProblems = null;
+  let currentSpecificSelection = null;
   let tablesRenderHandle = null;
   let tableCardObserver = null;
   const rowResetQueue = [];
@@ -2398,7 +2398,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trainTypedAnswer = '';
     trainScoreDiv.textContent = '';
     trainRestartBtn.classList.add('hidden');
-    currentSpecificProblems = null;
+    currentSpecificSelection = null;
     showScreen('training');
     renderTrainingProblem();
   }
@@ -2425,7 +2425,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trainTypedAnswer = '';
 
     // Iniciar o ocultar el temporizador según el tipo de entrenamiento
-    if (currentSpecificProblems) {
+    if (isSpecificTrainingActive()) {
       // Entrenamiento específico: sin cronómetro
       if (trainTimer) {
         clearInterval(trainTimer);
@@ -2543,7 +2543,7 @@ document.addEventListener('DOMContentLoaded', () => {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: currentSpecificProblems ? 'specific' : 'training',
+      mode: isSpecificTrainingActive() ? 'specific' : 'training',
       source: 'multiple-choice',
     });
     if (isCorrect) {
@@ -2609,7 +2609,7 @@ document.addEventListener('DOMContentLoaded', () => {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: currentSpecificProblems ? 'specific' : 'training',
+      mode: isSpecificTrainingActive() ? 'specific' : 'training',
       source: 'written',
     });
     if (isCorrect) {
@@ -2687,7 +2687,7 @@ document.addEventListener('DOMContentLoaded', () => {
         correct: false,
         timeTaken,
         skipped: false,
-        mode: currentSpecificProblems ? 'specific' : 'training',
+        mode: isSpecificTrainingActive() ? 'specific' : 'training',
         source: reason === 'time' ? 'timeout' : 'system',
         timedOut: reason === 'time',
       });
@@ -2714,8 +2714,13 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {Array} problemList - Lista de problemas a entrenar.
    */
   function startSpecificTrainingSession(problemList) {
-    currentSpecificProblems = problemList;
-    trainProblems = problemList;
+    if (Array.isArray(problemList) && problemList.length > 0) {
+      currentSpecificSelection = problemList.map((prob) => ({ ...prob }));
+    }
+    if (!isSpecificTrainingActive()) {
+      return;
+    }
+    trainProblems = generateSpecificProblems(currentSpecificSelection);
     trainIndex = 0;
     trainCorrectCount = 0;
     trainTypedAnswer = '';
@@ -2723,6 +2728,10 @@ document.addEventListener('DOMContentLoaded', () => {
     trainRestartBtn.classList.add('hidden');
     showScreen('training');
     renderTrainingProblem();
+  }
+
+  function isSpecificTrainingActive() {
+    return Array.isArray(currentSpecificSelection) && currentSpecificSelection.length > 0;
   }
 
   function resetTableCardObserver() {
@@ -3166,8 +3175,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reiniciar entrenamiento
     trainRestartBtn.addEventListener('click', () => {
       // Si hay una lista de problemas específicos, reiniciar esa sesión; de lo contrario, sesión aleatoria
-      if (currentSpecificProblems && Array.isArray(currentSpecificProblems)) {
-        startSpecificTrainingSession(currentSpecificProblems);
+      if (isSpecificTrainingActive()) {
+        startSpecificTrainingSession();
       } else {
         startTrainingSession();
       }
@@ -3229,9 +3238,7 @@ document.addEventListener('DOMContentLoaded', () => {
           alert('Selecciona al menos una tabla y un número para entrenar.');
           return;
         }
-        // Generar lista de problemas específicos con mejor aleatoriedad y sin repeticiones consecutivas
-        const problemsList = generateSpecificProblems(selectedProblems);
-        startSpecificTrainingSession(problemsList);
+        startSpecificTrainingSession(selectedProblems);
       });
     }
     // Mostrar pantalla de inicio
