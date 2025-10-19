@@ -1107,6 +1107,7 @@ input[type="checkbox"] {
   overflow-y: hidden;
   box-sizing: border-box;
   padding: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .panel,
@@ -1118,41 +1119,38 @@ input[type="checkbox"] {
 }
 
 /* === WALLPAPER (FINAL DEL ARCHIVO) === */
-html {
-  background-color: #0b0f1a;
-  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
-    url("assets/ciudad-cyberpunk.png");
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-attachment: fixed;
-  background-size: cover;
+html,
+body {
   width: 100%;
+  min-height: 100%;
   min-height: 100dvh;
+  background-color: #0b0f1a;
   overflow-x: hidden;
   overflow-y: hidden;
+  overscroll-behavior: none;
 }
 
 body {
   margin: 0;
-  width: 100%;
-  min-height: 100dvh;
+  color: var(--text-color);
+  touch-action: manipulation;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: calc(-1 * env(safe-area-inset-top, 0px));
+  right: calc(-1 * env(safe-area-inset-right, 0px));
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  left: calc(-1 * env(safe-area-inset-left, 0px));
   background-color: #0b0f1a;
   background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
     url("assets/ciudad-cyberpunk.png");
   background-repeat: no-repeat;
   background-position: center center;
-  background-attachment: fixed;
   background-size: cover;
-  color: var(--text-color);
-  overflow-x: hidden;
-  overflow-y: hidden;
-  overscroll-behavior: none;
-  touch-action: manipulation;
-}
-
-html,
-body {
-  height: 100%;
+  pointer-events: none;
+  z-index: -1;
 }
 
 #app,
@@ -1167,8 +1165,6 @@ body {
 
 html::before,
 html::after,
-body::before,
-body::after,
 #app::before,
 #app::after,
 .app::before,

@@ -22,32 +22,38 @@
   <meta name="theme-color" content="#3498db" />
   <!-- DEPLOY_CHECK v1514 Diego -->
   <style>
-    html {
-      background-color: #0b0f1a;
-      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
-        url("assets/ciudad-cyberpunk.png");
-      background-repeat: no-repeat;
-      background-position: center center;
-      background-attachment: fixed;
-      background-size: cover;
+    :root {
+      color-scheme: dark;
+    }
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      min-height: 100dvh;
       overflow-x: hidden;
       overflow-y: hidden;
-      min-height: 100dvh;
-      width: 100%;
+      overscroll-behavior: none;
+      background-color: #0b0f1a;
     }
     body {
+      touch-action: manipulation;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: calc(-1 * env(safe-area-inset-top, 0px));
+      right: calc(-1 * env(safe-area-inset-right, 0px));
+      bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+      left: calc(-1 * env(safe-area-inset-left, 0px));
       background-color: #0b0f1a;
       background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
         url("assets/ciudad-cyberpunk.png");
       background-repeat: no-repeat;
       background-position: center center;
-      background-attachment: fixed;
       background-size: cover;
-      margin: 0;
-      min-height: 100dvh;
-      width: 100%;
-      overflow-x: hidden;
-      overflow-y: hidden;
+      pointer-events: none;
+      z-index: -1;
     }
     #app,
     .app,
@@ -60,8 +66,6 @@
     }
     html::before,
     html::after,
-    body::before,
-    body::after,
     #app::before,
     #app::after,
     .app::before,
