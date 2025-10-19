@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <!-- Configura el viewport al ancho del dispositivo, fija la escala inicial y aprovecha toda la zona segura sin bloquear el zoom -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
   <title>Brain training</title>
   <!-- Manifest y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -90,8 +93,8 @@
         <h1 id="home-title">Brain training</h1>
         <!-- Controles para elegir el modo de operación -->
         <div id="home-operation-toggle" class="operation-toggle">
-          <button id="home-op-mul" class="op-btn active">A × B = ?</button>
           <button id="home-op-div" class="op-btn">A ÷ B = ?</button>
+          <button id="home-op-mul" class="op-btn active">A × B = ?</button>
         </div>
         <!-- Barra de progreso dentro de la tarjeta -->
         <div id="progress-wrapper">
@@ -212,6 +215,7 @@
     <div id="train-answer-area" class="answer-area"></div>
     <div id="train-feedback" class="feedback"></div>
     <div id="train-score" class="score"></div>
+    <button id="train-skip-btn">Mostrar respuesta</button>
     <button id="train-restart-btn" class="hidden">Reintentar</button>
   </div>
 
