@@ -74,6 +74,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const trainFeedbackDiv = document.getElementById('train-feedback');
   const trainScoreDiv = document.getElementById('train-score');
   const trainRestartBtn = document.getElementById('train-restart-btn');
+  const trainSkipBtn = document.getElementById('train-skip-btn');
+  const TRAIN_SKIP_ARIA =
+    'Mostrar la respuesta correcta y avanzar al siguiente problema de entrenamiento';
+  if (trainSkipBtn) {
+    trainSkipBtn.textContent = LEARN_SKIP_TEXT;
+    trainSkipBtn.setAttribute('aria-label', TRAIN_SKIP_ARIA);
+    trainSkipBtn.classList.add('hidden');
+  }
 
   // Elementos de la pantalla de progreso
   const progressBackBtn = document.getElementById('progress-back-btn');
@@ -1507,6 +1515,35 @@ document.addEventListener('DOMContentLoaded', () => {
   let trainTypedAnswer = '';
   let trainQuestionStartTime = 0;
 
+  function showTrainSkipButton() {
+    if (!trainSkipBtn) return;
+    trainSkipBtn.classList.remove('hidden');
+    trainSkipBtn.disabled = false;
+  }
+
+  function disableTrainSkipButton() {
+    if (!trainSkipBtn) return;
+    trainSkipBtn.disabled = true;
+  }
+
+  function hideTrainSkipButton() {
+    if (!trainSkipBtn) return;
+    trainSkipBtn.classList.add('hidden');
+    trainSkipBtn.disabled = true;
+  }
+
+  function scheduleNextTrainingQuestion(delay = 800) {
+    const advance = () => {
+      if (trainIndex < trainProblems.length - 1) {
+        trainIndex++;
+        renderTrainingProblem();
+      } else {
+        handleTrainFinish();
+      }
+    };
+    setTimeout(advance, delay);
+  }
+
   /**
    * Actualizar la interfaz de entrenamiento específico.
    * Muestra u oculta las casillas de selección y el botón de inicio según el estado del interruptor.
@@ -2418,6 +2455,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     trainQuestionStartTime = Date.now();
+    showTrainSkipButton();
+    if (trainSkipBtn) {
+      trainSkipBtn.disabled = false;
+    }
 
     trainFeedbackDiv.textContent = '';
     trainFeedbackDiv.style.color = '#2c3e50';
@@ -2533,6 +2574,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.forEach((b) => {
       b.disabled = true;
     });
+    disableTrainSkipButton();
     // Registrar la pregunta respondida
     stats.totalQuestions++;
     const currentProblem = trainProblems[trainIndex];
@@ -2556,17 +2598,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Guardar estadísticas
       saveStats();
       // Esperar brevemente y avanzar al siguiente problema
-      setTimeout(() => {
-        if (trainIndex < trainProblems.length - 1) {
-          trainIndex++;
-          renderTrainingProblem();
-        } else {
-          handleTrainFinish();
-        }
-      }, 500);
+      scheduleNextTrainingQuestion(500);
     } else {
-      // Incorrecto: marcar opciones y finalizar la sesión (pierdes)
-      trainFeedbackDiv.textContent = '¡Respuesta incorrecta! Sesión terminada.';
+      // Incorrecto: marcar opciones y mostrar respuesta correcta sin finalizar sesión
+      trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correct}.`;
       trainFeedbackDiv.style.color = '#c0392b';
       buttons.forEach((b) => {
         const val = parseInt(b.textContent, 10);
@@ -2578,10 +2613,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       // Guardar estadísticas
       saveStats();
-      // Finalizar entrenamiento por error después de un breve retraso
-      setTimeout(() => {
-        endTrainingDueToError();
-      }, 800);
+      scheduleNextTrainingQuestion(1000);
     }
   }
 
@@ -2599,6 +2631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trainAnswerArea.querySelectorAll('button').forEach((btn) => {
       btn.disabled = true;
     });
+    disableTrainSkipButton();
     stats.totalQuestions++;
     const currentProblem = trainProblems[trainIndex];
     const now = Date.now();
@@ -2620,24 +2653,17 @@ document.addEventListener('DOMContentLoaded', () => {
       trainFeedbackDiv.textContent = '¡Correcto!';
       trainFeedbackDiv.style.color = '#27ae60';
       saveStats();
-      setTimeout(() => {
-        if (trainIndex < trainProblems.length - 1) {
-          trainIndex++;
-          renderTrainingProblem();
-        } else {
-          handleTrainFinish();
-        }
-      }, 500);
+      scheduleNextTrainingQuestion(500);
     } else {
-      // Incorrecto: finalizar sesión inmediatamente
+      // Incorrecto: mostrar la respuesta correcta y continuar
       display.classList.add('incorrect');
-      trainFeedbackDiv.textContent = `¡Respuesta incorrecta! La respuesta correcta era ${correct}. Sesión terminada.`;
+      const correctText = String(correct);
+      display.textContent = correctText;
+      trainFeedbackDiv.textContent = `Respuesta incorrecta. La respuesta correcta era ${correctText}.`;
       trainFeedbackDiv.style.color = '#c0392b';
       // Guardar estadísticas
       saveStats();
-      setTimeout(() => {
-        endTrainingDueToError();
-      }, 800);
+      scheduleNextTrainingQuestion(1000);
     }
   }
 
@@ -2648,6 +2674,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
     }
+    hideTrainSkipButton();
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     trainFeedbackDiv.textContent = '¡Sesión completada!';
     trainFeedbackDiv.style.color = '#27ae60';
@@ -2663,6 +2690,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
     }
+    hideTrainSkipButton();
     // Mostrar puntuación alcanzada antes del fallo
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     // El mensaje ya se ha establecido antes de llamar a esta función
@@ -2679,6 +2707,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
     }
+    disableTrainSkipButton();
     const currentProblem = trainProblems[trainIndex];
     if (currentProblem) {
       const now = Date.now();
@@ -3170,6 +3199,58 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           nextLearningStep();
         }, 1000);
+      });
+    }
+    if (trainSkipBtn) {
+      trainSkipBtn.addEventListener('click', () => {
+        if (trainSkipBtn.disabled) {
+          return;
+        }
+        const problem = trainProblems[trainIndex];
+        if (!problem) {
+          return;
+        }
+        if (trainTimer) {
+          clearInterval(trainTimer);
+        }
+        disableTrainSkipButton();
+        const answerButtons = trainAnswerArea.querySelectorAll('button');
+        answerButtons.forEach((btn) => {
+          btn.disabled = true;
+        });
+        const correct = problem.answer;
+        const now = Date.now();
+        const timeTaken = now - trainQuestionStartTime;
+        const { multipleChoice } = getActiveModeConfig();
+        if (multipleChoice) {
+          answerButtons.forEach((btn) => {
+            const val = parseInt(btn.textContent, 10);
+            if (val === correct) {
+              btn.classList.add('correct');
+            } else {
+              btn.classList.remove('incorrect');
+            }
+          });
+        } else {
+          const display = trainAnswerArea.querySelector('#train-display');
+          if (display) {
+            display.textContent = String(correct);
+            display.classList.remove('incorrect');
+            display.classList.add('correct');
+          }
+        }
+        stats.totalQuestions++;
+        recordProblemAttempt(problem, {
+          correct: false,
+          timeTaken,
+          skipped: true,
+          mode: isSpecificTrainingActive() ? 'specific' : 'training',
+          source: 'skip',
+        });
+        trainFeedbackDiv.textContent = `La respuesta era ${correct}.`;
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        scheduleNextTrainingQuestion(1000);
       });
     }
     // Reiniciar entrenamiento

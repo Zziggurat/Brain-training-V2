@@ -267,6 +267,7 @@ button:disabled {
 #config-save-btn,
 #learn-next-btn,
 #learn-skip-btn,
+#train-skip-btn,
 #train-restart-btn,
 #start-specific-btn,
 #reset-progress-btn,
@@ -286,6 +287,7 @@ button:disabled {
 #config-save-btn:active,
 #learn-next-btn:active,
 #learn-skip-btn:active,
+#train-skip-btn:active,
 #train-restart-btn:active,
 #home-progress-btn:active,
 #start-specific-btn:active {
@@ -691,12 +693,14 @@ input[type="checkbox"] {
 
 #learn-next-btn,
 #learn-skip-btn,
+#train-skip-btn,
 #train-restart-btn {
   max-width: var(--keypad-width);
   align-self: center;
 }
 
-#learn-skip-btn {
+#learn-skip-btn,
+#train-skip-btn {
   margin-top: 4px;
 }
 
@@ -1113,7 +1117,12 @@ input[type="checkbox"] {
 
 /* === WALLPAPER (FINAL DEL ARCHIVO) === */
 html {
-  background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
+  background-color: #0b0f1a;
+  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+    url("assets/ciudad-cyberpunk.png");
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-attachment: fixed;
   background-size: cover;
   overflow: hidden;
 }
