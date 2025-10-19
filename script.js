@@ -733,12 +733,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  function calculateProblemWeight(problem, { now = Date.now() } = {}) {
-    const key = createProblemKey(problem);
-    const starCount = stars[key] || 0;
-    const due = dueTimes[key] || 0;
-    const { accuracy, attempts, avgTime, streak, errorStreak, lastSeen } = getMasteryStats(key);
-
+  function calculateProblemWeightFromStatsFallback(
+    { starCount = 0, due = 0, accuracy = 0, attempts = 0, avgTime = 0, streak = 0, errorStreak = 0, lastSeen = 0 } = {},
+    { now = Date.now() } = {}
+  ) {
     let weight = 1;
 
     if (starCount < 5) {
@@ -801,6 +799,43 @@ document.addEventListener('DOMContentLoaded', () => {
       return 1;
     }
     return Math.max(1, Math.round(weight));
+  }
+
+  const fallbackGlobalScope =
+    typeof globalThis !== 'undefined'
+      ? globalThis
+      : typeof window !== 'undefined'
+      ? window
+      : typeof self !== 'undefined'
+      ? self
+      : null;
+
+  if (fallbackGlobalScope) {
+    const existingProblemWeight = fallbackGlobalScope.ProblemWeight;
+    if (!existingProblemWeight || typeof existingProblemWeight.calculateProblemWeightFromStats !== 'function') {
+      fallbackGlobalScope.ProblemWeight = {
+        ...(existingProblemWeight || {}),
+        calculateProblemWeightFromStats: calculateProblemWeightFromStatsFallback,
+      };
+    }
+  }
+
+  function calculateProblemWeight(problem, { now = Date.now() } = {}) {
+    const key = createProblemKey(problem);
+    const starCount = stars[key] || 0;
+    const due = dueTimes[key] || 0;
+    const { accuracy, attempts, avgTime, streak, errorStreak, lastSeen } = getMasteryStats(key);
+    const calculator =
+      typeof ProblemWeight !== 'undefined' &&
+      ProblemWeight &&
+      typeof ProblemWeight.calculateProblemWeightFromStats === 'function'
+        ? ProblemWeight.calculateProblemWeightFromStats
+        : calculateProblemWeightFromStatsFallback;
+
+    return calculator(
+      { starCount, due, accuracy, attempts, avgTime, streak, errorStreak, lastSeen },
+      { now }
+    );
   }
 
   function applyAdaptiveScheduling(problem, entry, { correct, skipped, mode }) {
