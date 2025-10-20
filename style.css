@@ -73,6 +73,8 @@ button:disabled {
   min-height: 100%;
   padding: calc(env(safe-area-inset-top, 0px) + 24px) var(--layout-padding)
     calc(env(safe-area-inset-bottom, 0px) + 32px);
+  padding: calc(constant(safe-area-inset-top) + 24px) var(--layout-padding)
+    calc(constant(safe-area-inset-bottom) + 32px);
   position: relative;
   box-sizing: border-box;
   height: 100%;
@@ -123,7 +125,9 @@ button:disabled {
   align-items: center;
   justify-content: flex-start;
   padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
+  padding-top: calc(constant(safe-area-inset-top) + 20px);
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding-bottom: calc(constant(safe-area-inset-bottom) + 24px);
 }
 
 #learning-screen.active,
@@ -1079,10 +1083,11 @@ input[type="checkbox"] {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
   box-sizing: border-box;
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: constant(safe-area-inset-bottom);
   z-index: 1;
 }
 
@@ -1114,16 +1119,25 @@ body {
   margin: 0;
   padding: 0;
   color: var(--text-color);
-  background: transparent;
+  background-color: #000;
+  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+    url("assets/ciudad-cyberpunk.png");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
   touch-action: manipulation;
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .app-wallpaper {
   position: fixed;
-  inset: 0;
+  top: -48px;
+  right: -48px;
+  bottom: -48px;
+  left: -48px;
   background-color: #000;
   background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
     url("assets/ciudad-cyberpunk.png");
@@ -1132,22 +1146,23 @@ body {
   background-size: cover;
   pointer-events: none;
   z-index: -1;
+  transform: translateZ(0);
 }
 
 @supports (top: env(safe-area-inset-top)) {
   .app-wallpaper {
-    top: calc(-1 * env(safe-area-inset-top, 0px));
-    right: calc(-1 * env(safe-area-inset-right, 0px));
-    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
-    left: calc(-1 * env(safe-area-inset-left, 0px));
+    top: calc(-1 * (env(safe-area-inset-top, 0px) + 48px));
+    right: calc(-1 * (env(safe-area-inset-right, 0px) + 48px));
+    bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 48px));
+    left: calc(-1 * (env(safe-area-inset-left, 0px) + 48px));
   }
 }
 
 @supports (top: constant(safe-area-inset-top)) {
   .app-wallpaper {
-    top: calc(-1 * constant(safe-area-inset-top));
-    right: calc(-1 * constant(safe-area-inset-right));
-    bottom: calc(-1 * constant(safe-area-inset-bottom));
-    left: calc(-1 * constant(safe-area-inset-left));
+    top: calc(-1 * (constant(safe-area-inset-top) + 48px));
+    right: calc(-1 * (constant(safe-area-inset-right) + 48px));
+    bottom: calc(-1 * (constant(safe-area-inset-bottom) + 48px));
+    left: calc(-1 * (constant(safe-area-inset-left) + 48px));
   }
 }

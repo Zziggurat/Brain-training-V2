@@ -41,15 +41,24 @@
       padding: 0;
       width: 100%;
       min-height: 100dvh;
-      background: transparent;
+      background-color: #000;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-size: cover;
       position: relative;
       isolation: isolate;
       touch-action: manipulation;
       overflow: hidden;
+      overscroll-behavior: none;
     }
     .app-wallpaper {
       position: fixed;
-      inset: 0;
+      top: -48px;
+      right: -48px;
+      bottom: -48px;
+      left: -48px;
       background-color: #000;
       background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
         url("assets/ciudad-cyberpunk.png");
@@ -58,21 +67,22 @@
       background-size: cover;
       pointer-events: none;
       z-index: -1;
+      transform: translateZ(0);
     }
     @supports (top: env(safe-area-inset-top)) {
       .app-wallpaper {
-        top: calc(-1 * env(safe-area-inset-top, 0px));
-        right: calc(-1 * env(safe-area-inset-right, 0px));
-        bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
-        left: calc(-1 * env(safe-area-inset-left, 0px));
+        top: calc(-1 * (env(safe-area-inset-top, 0px) + 48px));
+        right: calc(-1 * (env(safe-area-inset-right, 0px) + 48px));
+        bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 48px));
+        left: calc(-1 * (env(safe-area-inset-left, 0px) + 48px));
       }
     }
     @supports (top: constant(safe-area-inset-top)) {
       .app-wallpaper {
-        top: calc(-1 * constant(safe-area-inset-top));
-        right: calc(-1 * constant(safe-area-inset-right));
-        bottom: calc(-1 * constant(safe-area-inset-bottom));
-        left: calc(-1 * constant(safe-area-inset-left));
+        top: calc(-1 * (constant(safe-area-inset-top) + 48px));
+        right: calc(-1 * (constant(safe-area-inset-right) + 48px));
+        bottom: calc(-1 * (constant(safe-area-inset-bottom) + 48px));
+        left: calc(-1 * (constant(safe-area-inset-left) + 48px));
       }
     }
     #app {
@@ -83,7 +93,9 @@
       overflow-x: hidden;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+      overscroll-behavior: none;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-bottom: constant(safe-area-inset-bottom);
       z-index: 1;
     }
     #app,
