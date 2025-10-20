@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <!-- Configura el viewport al ancho del dispositivo, fija la escala inicial y aprovecha toda la zona segura sin bloquear el zoom -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
   <title>Brain training</title>
   <!-- Manifest y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -19,13 +22,66 @@
   <meta name="theme-color" content="#3498db" />
   <!-- DEPLOY_CHECK v1514 Diego -->
   <style>
-    html {
-      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
+    :root {
+      color-scheme: dark;
+    }
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: hidden;
+      overscroll-behavior: none;
+      background-color: #0b0f1a;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
       background-size: cover;
+      background-attachment: fixed;
     }
     body {
-      background: transparent;
-      margin: 0;
+      touch-action: manipulation;
+      position: relative;
+      isolation: isolate;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: -120px;
+      right: -120px;
+      bottom: -120px;
+      left: -120px;
+      background-color: #0b0f1a;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      pointer-events: none;
+      z-index: 0;
+    }
+    @supports (top: env(safe-area-inset-top)) {
+      body::before {
+        top: calc(0px - env(safe-area-inset-top, 0px));
+        right: calc(0px - env(safe-area-inset-right, 0px));
+        bottom: calc(0px - env(safe-area-inset-bottom, 0px));
+        left: calc(0px - env(safe-area-inset-left, 0px));
+      }
+    }
+    @supports (top: constant(safe-area-inset-top)) {
+      body::before {
+        top: calc(0px - constant(safe-area-inset-top));
+        right: calc(0px - constant(safe-area-inset-right));
+        bottom: calc(0px - constant(safe-area-inset-bottom));
+        left: calc(0px - constant(safe-area-inset-left));
+      }
+    }
+    #app {
+      position: relative;
+      z-index: 1;
     }
     #app,
     .app,
@@ -38,8 +94,6 @@
     }
     html::before,
     html::after,
-    body::before,
-    body::after,
     #app::before,
     #app::after,
     .app::before,
@@ -90,8 +144,8 @@
         <h1 id="home-title">Brain training</h1>
         <!-- Controles para elegir el modo de operación -->
         <div id="home-operation-toggle" class="operation-toggle">
-          <button id="home-op-mul" class="op-btn active">A × B = ?</button>
           <button id="home-op-div" class="op-btn">A ÷ B = ?</button>
+          <button id="home-op-mul" class="op-btn active">A × B = ?</button>
         </div>
         <!-- Barra de progreso dentro de la tarjeta -->
         <div id="progress-wrapper">
@@ -212,6 +266,7 @@
     <div id="train-answer-area" class="answer-area"></div>
     <div id="train-feedback" class="feedback"></div>
     <div id="train-score" class="score"></div>
+    <button id="train-skip-btn">Mostrar respuesta</button>
     <button id="train-restart-btn" class="hidden">Reintentar</button>
   </div>
 
