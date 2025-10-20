@@ -40,10 +40,10 @@
     body::before {
       content: "";
       position: fixed;
-      top: -48px;
-      right: -48px;
-      bottom: -48px;
-      left: -48px;
+      top: -120px;
+      right: -120px;
+      bottom: -120px;
+      left: -120px;
       background-color: #0b0f1a;
       background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
         url("assets/ciudad-cyberpunk.png");
@@ -55,25 +55,29 @@
     }
     @supports (top: env(safe-area-inset-top)) {
       body::before {
-        top: calc(-1 * (env(safe-area-inset-top, 0px) + 24px));
-        right: calc(-1 * (env(safe-area-inset-right, 0px) + 24px));
-        bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 24px));
-        left: calc(-1 * (env(safe-area-inset-left, 0px) + 24px));
+        top: calc(-1 * (env(safe-area-inset-top, 0px) + 72px));
+        right: calc(-1 * (env(safe-area-inset-right, 0px) + 72px));
+        bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 72px));
+        left: calc(-1 * (env(safe-area-inset-left, 0px) + 72px));
       }
     }
     @supports (top: constant(safe-area-inset-top)) {
       body::before {
-        top: calc(-1 * (constant(safe-area-inset-top) + 24px));
-        right: calc(-1 * (constant(safe-area-inset-right) + 24px));
-        bottom: calc(-1 * (constant(safe-area-inset-bottom) + 24px));
-        left: calc(-1 * (constant(safe-area-inset-left) + 24px));
+        top: calc(-1 * (constant(safe-area-inset-top) + 72px));
+        right: calc(-1 * (constant(safe-area-inset-right) + 72px));
+        bottom: calc(-1 * (constant(safe-area-inset-bottom) + 72px));
+        left: calc(-1 * (constant(safe-area-inset-left) + 72px));
       }
     }
     #app {
       position: relative;
-      min-height: 100dvh;
       width: 100%;
-      overflow: hidden;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       z-index: 1;
     }
     #app,
