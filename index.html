@@ -22,81 +22,41 @@
     :root {
       color-scheme: dark;
     }
-    html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      min-height: 100dvh;
-      background-color: #000;
-      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
-        url("assets/ciudad-cyberpunk.png");
-      background-position: center center;
-      background-repeat: no-repeat;
-      background-size: cover;
-      overflow: hidden;
-      overscroll-behavior: none;
-    }
+    html,
     body {
       margin: 0;
       padding: 0;
       width: 100%;
       min-height: 100dvh;
-      background-color: #000;
-      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
-        url("assets/ciudad-cyberpunk.png");
-      background-position: center center;
-      background-repeat: no-repeat;
-      background-size: cover;
+      background: transparent;
+      overscroll-behavior: none;
+    }
+    body {
       position: relative;
       isolation: isolate;
       touch-action: manipulation;
       overflow: hidden;
-      overscroll-behavior: none;
     }
-    .app-wallpaper {
+    body::before {
+      content: "";
       position: fixed;
-      top: -48px;
-      right: -48px;
-      bottom: -48px;
-      left: -48px;
-      background-color: #000;
-      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+      left: calc(-1 * (env(safe-area-inset-left, 0px) + 40px));
+      right: calc(-1 * (env(safe-area-inset-right, 0px) + 40px));
+      top: calc(-1 * (env(safe-area-inset-top, 0px) + 40px));
+      bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 40px));
+      left: calc(-1 * (constant(safe-area-inset-left) + 40px));
+      right: calc(-1 * (constant(safe-area-inset-right) + 40px));
+      top: calc(-1 * (constant(safe-area-inset-top) + 40px));
+      bottom: calc(-1 * (constant(safe-area-inset-bottom) + 40px));
+      background: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
         url("assets/ciudad-cyberpunk.png");
-      background-repeat: no-repeat;
+      background-color: #000;
       background-position: center center;
+      background-repeat: no-repeat;
       background-size: cover;
-      pointer-events: none;
       z-index: -1;
+      pointer-events: none;
       transform: translateZ(0);
-    }
-    @supports (top: env(safe-area-inset-top)) {
-      .app-wallpaper {
-        top: calc(-1 * (env(safe-area-inset-top, 0px) + 48px));
-        right: calc(-1 * (env(safe-area-inset-right, 0px) + 48px));
-        bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 48px));
-        left: calc(-1 * (env(safe-area-inset-left, 0px) + 48px));
-      }
-    }
-    @supports (top: constant(safe-area-inset-top)) {
-      .app-wallpaper {
-        top: calc(-1 * (constant(safe-area-inset-top) + 48px));
-        right: calc(-1 * (constant(safe-area-inset-right) + 48px));
-        bottom: calc(-1 * (constant(safe-area-inset-bottom) + 48px));
-        left: calc(-1 * (constant(safe-area-inset-left) + 48px));
-      }
-    }
-    #app {
-      position: relative;
-      width: 100%;
-      min-height: 100dvh;
-      height: 100dvh;
-      overflow-x: hidden;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: none;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      padding-bottom: constant(safe-area-inset-bottom);
-      z-index: 1;
     }
     #app,
     .app,
@@ -133,10 +93,10 @@
   <script defer src="script.js?r=20241102-1514"></script>
 </head>
 <body>
-  <div class="app-wallpaper" aria-hidden="true"></div>
   <div id="app" class="app">
-  <!-- Pantalla de inicio -->
-  <div id="home-screen" class="screen active">
+    <div id="app-scroll" class="app-scroll">
+      <!-- Pantalla de inicio -->
+      <div id="home-screen" class="screen active">
     <div class="home-top-bar">
       <button
         id="home-settings-btn"
@@ -314,8 +274,8 @@
     <div id="result-card" class="result-card" aria-live="polite"></div>
   </div>
 
-  <footer class="version-tag" aria-label="Marcador de versión"></footer>
-
+      <footer class="version-tag" aria-label="Marcador de versión"></footer>
+    </div>
   </div>
 
 </body>

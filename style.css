@@ -71,10 +71,7 @@ button:disabled {
   width: 100%;
   max-width: 100vw;
   min-height: 100%;
-  padding: calc(env(safe-area-inset-top, 0px) + 24px) var(--layout-padding)
-    calc(env(safe-area-inset-bottom, 0px) + 32px);
-  padding: calc(constant(safe-area-inset-top) + 24px) var(--layout-padding)
-    calc(constant(safe-area-inset-bottom) + 32px);
+  padding: 24px var(--layout-padding) 32px;
   position: relative;
   box-sizing: border-box;
   height: 100%;
@@ -124,10 +121,8 @@ button:disabled {
 #training-screen {
   align-items: center;
   justify-content: flex-start;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
-  padding-top: calc(constant(safe-area-inset-top) + 20px);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
-  padding-bottom: calc(constant(safe-area-inset-bottom) + 24px);
+  padding-top: 20px;
+  padding-bottom: 24px;
 }
 
 #learning-screen.active,
@@ -1069,26 +1064,40 @@ input[type="checkbox"] {
 }
 #app,
 .app {
-  position: relative;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 100vw;
-  min-height: 100vh;
   min-height: 100dvh;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100vh;
   max-height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: none;
   box-sizing: border-box;
-  padding: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-top: constant(safe-area-inset-top);
+  padding-right: constant(safe-area-inset-right);
   padding-bottom: constant(safe-area-inset-bottom);
-  z-index: 1;
+  padding-left: constant(safe-area-inset-left);
+  overflow: hidden;
+  z-index: 0;
+}
+
+.app-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .panel,
@@ -1105,12 +1114,6 @@ html {
   min-height: 100dvh;
   margin: 0;
   padding: 0;
-  background-color: #000;
-  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
-    url("assets/ciudad-cyberpunk.png");
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-size: cover;
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -1119,50 +1122,9 @@ body {
   margin: 0;
   padding: 0;
   color: var(--text-color);
-  background-color: #000;
-  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
-    url("assets/ciudad-cyberpunk.png");
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-size: cover;
   touch-action: manipulation;
   position: relative;
   isolation: isolate;
   overflow: hidden;
   overscroll-behavior: none;
-}
-
-.app-wallpaper {
-  position: fixed;
-  top: -48px;
-  right: -48px;
-  bottom: -48px;
-  left: -48px;
-  background-color: #000;
-  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
-    url("assets/ciudad-cyberpunk.png");
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-size: cover;
-  pointer-events: none;
-  z-index: -1;
-  transform: translateZ(0);
-}
-
-@supports (top: env(safe-area-inset-top)) {
-  .app-wallpaper {
-    top: calc(-1 * (env(safe-area-inset-top, 0px) + 48px));
-    right: calc(-1 * (env(safe-area-inset-right, 0px) + 48px));
-    bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 48px));
-    left: calc(-1 * (env(safe-area-inset-left, 0px) + 48px));
-  }
-}
-
-@supports (top: constant(safe-area-inset-top)) {
-  .app-wallpaper {
-    top: calc(-1 * (constant(safe-area-inset-top) + 48px));
-    right: calc(-1 * (constant(safe-area-inset-right) + 48px));
-    bottom: calc(-1 * (constant(safe-area-inset-bottom) + 48px));
-    left: calc(-1 * (constant(safe-area-inset-left) + 48px));
-  }
 }
