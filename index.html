@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <!-- Configura el viewport al ancho del dispositivo, fija la escala inicial y aprovecha toda la zona segura sin bloquear el zoom -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
   <title>Brain training</title>
   <!-- Manifest y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
@@ -28,22 +31,29 @@
       width: 100%;
       min-height: 100%;
       min-height: 100dvh;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: hidden;
       overscroll-behavior: none;
       background-color: #0b0f1a;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      background-attachment: fixed;
     }
     body {
+      touch-action: manipulation;
       position: relative;
       isolation: isolate;
-      touch-action: manipulation;
     }
     body::before {
       content: "";
       position: fixed;
-      top: -48px;
-      right: -48px;
-      bottom: -48px;
-      left: -48px;
+      top: -120px;
+      right: -120px;
+      bottom: -120px;
+      left: -120px;
       background-color: #0b0f1a;
       background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
         url("assets/ciudad-cyberpunk.png");
@@ -51,29 +61,26 @@
       background-position: center center;
       background-size: cover;
       pointer-events: none;
-      z-index: -1;
+      z-index: 0;
     }
     @supports (top: env(safe-area-inset-top)) {
       body::before {
-        top: calc(-1 * (env(safe-area-inset-top, 0px) + 24px));
-        right: calc(-1 * (env(safe-area-inset-right, 0px) + 24px));
-        bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 24px));
-        left: calc(-1 * (env(safe-area-inset-left, 0px) + 24px));
+        top: calc(0px - env(safe-area-inset-top, 0px));
+        right: calc(0px - env(safe-area-inset-right, 0px));
+        bottom: calc(0px - env(safe-area-inset-bottom, 0px));
+        left: calc(0px - env(safe-area-inset-left, 0px));
       }
     }
     @supports (top: constant(safe-area-inset-top)) {
       body::before {
-        top: calc(-1 * (constant(safe-area-inset-top) + 24px));
-        right: calc(-1 * (constant(safe-area-inset-right) + 24px));
-        bottom: calc(-1 * (constant(safe-area-inset-bottom) + 24px));
-        left: calc(-1 * (constant(safe-area-inset-left) + 24px));
+        top: calc(0px - constant(safe-area-inset-top));
+        right: calc(0px - constant(safe-area-inset-right));
+        bottom: calc(0px - constant(safe-area-inset-bottom));
+        left: calc(0px - constant(safe-area-inset-left));
       }
     }
     #app {
       position: relative;
-      min-height: 100dvh;
-      width: 100%;
-      overflow: hidden;
       z-index: 1;
     }
     #app,
