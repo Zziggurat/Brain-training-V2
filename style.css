@@ -24,6 +24,13 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 img,
@@ -62,12 +69,16 @@ button:disabled {
 .screen {
   display: none;
   width: 100%;
+  max-width: 100vw;
   min-height: 100%;
-  padding: calc(env(safe-area-inset-top, 0px) + 24px) var(--layout-padding)
-    calc(env(safe-area-inset-bottom, 0px) + 32px);
+  padding: 24px var(--layout-padding) 32px;
   position: relative;
   box-sizing: border-box;
-  overflow: visible;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .screen.active {
@@ -104,15 +115,14 @@ button:disabled {
   align-items: center;
   gap: clamp(24px, 6vh, 48px);
   position: relative;
-  scrollbar-gutter: stable both-edges;
 }
 
 #learning-screen,
 #training-screen {
   align-items: center;
   justify-content: flex-start;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding-top: 20px;
+  padding-bottom: 24px;
 }
 
 #learning-screen.active,
@@ -177,7 +187,6 @@ button:disabled {
 
 .operation-toggle {
   display: inline-flex;
-  flex-direction: row-reverse;
   padding: clamp(4px, 1.2vw, 8px);
   border-radius: clamp(22px, 4vw, 32px);
   background: rgba(9, 14, 25, 0.65);
@@ -258,6 +267,7 @@ button:disabled {
 #config-save-btn,
 #learn-next-btn,
 #learn-skip-btn,
+#train-skip-btn,
 #train-restart-btn,
 #start-specific-btn,
 #reset-progress-btn,
@@ -277,6 +287,7 @@ button:disabled {
 #config-save-btn:active,
 #learn-next-btn:active,
 #learn-skip-btn:active,
+#train-skip-btn:active,
 #train-restart-btn:active,
 #home-progress-btn:active,
 #start-specific-btn:active {
@@ -342,10 +353,7 @@ button:disabled {
   flex-direction: column;
   align-items: stretch;
   gap: clamp(10px, 2.6vw, 16px);
-  overflow-x: auto;
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 .screen.active {
@@ -677,12 +685,14 @@ input[type="checkbox"] {
 
 #learn-next-btn,
 #learn-skip-btn,
+#train-skip-btn,
 #train-restart-btn {
   max-width: var(--keypad-width);
   align-self: center;
 }
 
-#learn-skip-btn {
+#learn-skip-btn,
+#train-skip-btn {
   margin-top: 4px;
 }
 
@@ -744,9 +754,7 @@ input[type="checkbox"] {
   border: 1px solid var(--glass-highlight);
   backdrop-filter: blur(22px);
   box-shadow: 0 36px 80px rgba(5, 7, 13, 0.5);
-  overflow: auto;
-  scrollbar-gutter: stable both-edges;
-  overscroll-behavior: contain;
+  overflow: hidden;
   height: clamp(420px, 72vh, 860px);
   position: relative;
 }
@@ -1007,27 +1015,9 @@ input[type="checkbox"] {
   flex-direction: column;
   gap: 6px;
   flex: 1;
-  overflow-y: auto;
-  overflow-x: auto;
+  overflow: hidden;
   padding-right: 8px;
   padding-bottom: 4px;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-}
-
-.table-rows::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.table-rows::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 999px;
-}
-
-.table-rows::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 999px;
 }
 
 .table-row {
@@ -1072,24 +1062,80 @@ input[type="checkbox"] {
 .problem-card.flip .card-front {
   animation: flip-card 0.6s forwards;
 }
-#app,
-.app {
-  position: relative;
+#root {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 32px);
+  max-width: 100vw;
+  min-height: 100dvh;
+  max-height: 100dvh;
   box-sizing: border-box;
-  scrollbar-width: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
+  padding-top: constant(safe-area-inset-top);
+  padding-right: constant(safe-area-inset-right);
+  padding-left: constant(safe-area-inset-left);
+  padding-bottom: calc(constant(safe-area-inset-bottom) + 120px);
+  overflow: hidden;
+  z-index: 1;
+  background: transparent;
 }
 
-#app::-webkit-scrollbar,
-.app::-webkit-scrollbar {
-  display: none;
+.scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.fade-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(
+      ellipse 55% 46px at 50% 100%,
+      rgba(0, 0, 0, 0.95) 0%,
+      rgba(0, 0, 0, 0.8) 60%,
+      rgba(0, 0, 0, 0) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.85) 70%,
+      #000 100%
+    );
+}
+
+.bottom-tint {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 
 .panel,
@@ -1101,49 +1147,23 @@ input[type="checkbox"] {
 }
 
 /* === WALLPAPER (FINAL DEL ARCHIVO) === */
-html,
-body {
-  height: 100%;
-}
-
 html {
-  background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
-  background-size: cover;
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
-  background: transparent;
   margin: 0;
+  padding: 0;
+  color: var(--text-color);
+  touch-action: manipulation;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
-#app,
-.app,
-.overlay,
-.container,
-.wrapper,
-.main,
-.page {
-  background: transparent;
-}
-
-html::before,
-html::after,
-body::before,
-body::after,
-#app::before,
-#app::after,
-.app::before,
-.app::after,
-.overlay::before,
-.overlay::after,
-.container::before,
-.container::after,
-.wrapper::before,
-.wrapper::after,
-.main::before,
-.main::after,
-.page::before,
-.page::after {
-  content: none;
-  background: transparent;
-}
