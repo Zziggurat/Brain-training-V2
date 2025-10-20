@@ -1082,7 +1082,8 @@ input[type="checkbox"] {
   padding-bottom: constant(safe-area-inset-bottom);
   padding-left: constant(safe-area-inset-left);
   overflow: hidden;
-  z-index: 0;
+  z-index: 1;
+  background: transparent;
 }
 
 .app-scroll {
