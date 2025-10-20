@@ -19,13 +19,72 @@
   <meta name="theme-color" content="#3498db" />
   <!-- DEPLOY_CHECK v1514 Diego -->
   <style>
+    :root {
+      color-scheme: dark;
+    }
     html {
-      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100dvh;
+      background-color: #000;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-position: center center;
+      background-repeat: no-repeat;
       background-size: cover;
+      overflow: hidden;
+      overscroll-behavior: none;
     }
     body {
-      background: transparent;
       margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100dvh;
+      background: transparent;
+      position: relative;
+      isolation: isolate;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+    .app-wallpaper {
+      position: fixed;
+      inset: 0;
+      background-color: #000;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      pointer-events: none;
+      z-index: -1;
+    }
+    @supports (top: env(safe-area-inset-top)) {
+      .app-wallpaper {
+        top: calc(-1 * env(safe-area-inset-top, 0px));
+        right: calc(-1 * env(safe-area-inset-right, 0px));
+        bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+        left: calc(-1 * env(safe-area-inset-left, 0px));
+      }
+    }
+    @supports (top: constant(safe-area-inset-top)) {
+      .app-wallpaper {
+        top: calc(-1 * constant(safe-area-inset-top));
+        right: calc(-1 * constant(safe-area-inset-right));
+        bottom: calc(-1 * constant(safe-area-inset-bottom));
+        left: calc(-1 * constant(safe-area-inset-left));
+      }
+    }
+    #app {
+      position: relative;
+      width: 100%;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      z-index: 1;
     }
     #app,
     .app,
@@ -38,8 +97,6 @@
     }
     html::before,
     html::after,
-    body::before,
-    body::after,
     #app::before,
     #app::after,
     .app::before,
@@ -64,6 +121,7 @@
   <script defer src="script.js?r=20241102-1514"></script>
 </head>
 <body>
+  <div class="app-wallpaper" aria-hidden="true"></div>
   <div id="app" class="app">
   <!-- Pantalla de inicio -->
   <div id="home-screen" class="screen active">
@@ -212,6 +270,7 @@
     <div id="train-answer-area" class="answer-area"></div>
     <div id="train-feedback" class="feedback"></div>
     <div id="train-score" class="score"></div>
+    <button id="train-skip-btn">Mostrar respuesta</button>
     <button id="train-restart-btn" class="hidden">Reintentar</button>
   </div>
 
