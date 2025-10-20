@@ -19,13 +19,66 @@
   <meta name="theme-color" content="#3498db" />
   <!-- DEPLOY_CHECK v1514 Diego -->
   <style>
-    html {
-      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
-      background-size: cover;
+    :root {
+      color-scheme: dark;
+    }
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background-color: #0b0f1a;
     }
     body {
-      background: transparent;
-      margin: 0;
+      position: relative;
+      isolation: isolate;
+      touch-action: manipulation;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: -120px;
+      right: -120px;
+      bottom: -120px;
+      left: -120px;
+      background-color: #0b0f1a;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      pointer-events: none;
+      z-index: -1;
+    }
+    @supports (top: env(safe-area-inset-top)) {
+      body::before {
+        top: calc(-1 * (env(safe-area-inset-top, 0px) + 72px));
+        right: calc(-1 * (env(safe-area-inset-right, 0px) + 72px));
+        bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 72px));
+        left: calc(-1 * (env(safe-area-inset-left, 0px) + 72px));
+      }
+    }
+    @supports (top: constant(safe-area-inset-top)) {
+      body::before {
+        top: calc(-1 * (constant(safe-area-inset-top) + 72px));
+        right: calc(-1 * (constant(safe-area-inset-right) + 72px));
+        bottom: calc(-1 * (constant(safe-area-inset-bottom) + 72px));
+        left: calc(-1 * (constant(safe-area-inset-left) + 72px));
+      }
+    }
+    #app {
+      position: relative;
+      width: 100%;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      z-index: 1;
     }
     #app,
     .app,
@@ -38,8 +91,6 @@
     }
     html::before,
     html::after,
-    body::before,
-    body::after,
     #app::before,
     #app::after,
     .app::before,
@@ -90,8 +141,8 @@
         <h1 id="home-title">Brain training</h1>
         <!-- Controles para elegir el modo de operación -->
         <div id="home-operation-toggle" class="operation-toggle">
-          <button id="home-op-mul" class="op-btn active">A × B = ?</button>
           <button id="home-op-div" class="op-btn">A ÷ B = ?</button>
+          <button id="home-op-mul" class="op-btn active">A × B = ?</button>
         </div>
         <!-- Barra de progreso dentro de la tarjeta -->
         <div id="progress-wrapper">
@@ -212,6 +263,7 @@
     <div id="train-answer-area" class="answer-area"></div>
     <div id="train-feedback" class="feedback"></div>
     <div id="train-score" class="score"></div>
+    <button id="train-skip-btn">Mostrar respuesta</button>
     <button id="train-restart-btn" class="hidden">Reintentar</button>
   </div>
 
