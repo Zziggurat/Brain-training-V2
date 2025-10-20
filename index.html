@@ -22,27 +22,35 @@
     :root {
       color-scheme: dark;
     }
-    html,
-    body {
+    html {
       margin: 0;
+      padding: 0;
       width: 100%;
       min-height: 100dvh;
+      background-color: #000;
+      background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+        url("assets/ciudad-cyberpunk.png");
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-size: cover;
       overflow: hidden;
       overscroll-behavior: none;
-      background-color: #0b0f1a;
     }
     body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100dvh;
+      background: transparent;
       position: relative;
       isolation: isolate;
       touch-action: manipulation;
+      overflow: hidden;
     }
     .app-wallpaper {
       position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      background-color: #0b0f1a;
+      inset: 0;
+      background-color: #000;
       background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
         url("assets/ciudad-cyberpunk.png");
       background-repeat: no-repeat;
@@ -140,8 +148,8 @@
         <h1 id="home-title">Brain training</h1>
         <!-- Controles para elegir el modo de operación -->
         <div id="home-operation-toggle" class="operation-toggle">
-          <button id="home-op-div" class="op-btn">A ÷ B = ?</button>
           <button id="home-op-mul" class="op-btn active">A × B = ?</button>
+          <button id="home-op-div" class="op-btn">A ÷ B = ?</button>
         </div>
         <!-- Barra de progreso dentro de la tarjeta -->
         <div id="progress-wrapper">

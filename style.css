@@ -188,7 +188,6 @@ button:disabled {
 
 .operation-toggle {
   display: inline-flex;
-  flex-direction: row-reverse;
   padding: clamp(4px, 1.2vw, 8px);
   border-radius: clamp(22px, 4vw, 32px);
   background: rgba(9, 14, 25, 0.65);
@@ -1099,26 +1098,33 @@ input[type="checkbox"] {
 html {
   width: 100%;
   min-height: 100dvh;
-  background-color: #0b0f1a;
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
+    url("assets/ciudad-cyberpunk.png");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
   overflow: hidden;
   overscroll-behavior: none;
 }
 
 body {
   margin: 0;
+  padding: 0;
   color: var(--text-color);
+  background: transparent;
   touch-action: manipulation;
   position: relative;
   isolation: isolate;
+  overflow: hidden;
 }
 
 .app-wallpaper {
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background-color: #0b0f1a;
+  inset: 0;
+  background-color: #000;
   background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
     url("assets/ciudad-cyberpunk.png");
   background-repeat: no-repeat;
