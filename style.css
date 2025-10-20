@@ -1075,11 +1075,11 @@ input[type="checkbox"] {
   padding-top: env(safe-area-inset-top, 0px);
   padding-right: env(safe-area-inset-right, 0px);
   padding-left: env(safe-area-inset-left, 0px);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
   padding-top: constant(safe-area-inset-top);
   padding-right: constant(safe-area-inset-right);
   padding-left: constant(safe-area-inset-left);
-  padding-bottom: calc(constant(safe-area-inset-bottom) + 96px);
+  padding-bottom: calc(constant(safe-area-inset-bottom) + 120px);
   overflow: hidden;
   z-index: 1;
   background: transparent;
@@ -1098,6 +1098,44 @@ input[type="checkbox"] {
 .scroll::-webkit-scrollbar {
   width: 0;
   height: 0;
+}
+
+.fade-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160px;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(
+      ellipse 55% 46px at 50% 100%,
+      rgba(0, 0, 0, 0.95) 0%,
+      rgba(0, 0, 0, 0.8) 60%,
+      rgba(0, 0, 0, 0) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.85) 70%,
+      #000 100%
+    );
+}
+
+.bottom-tint {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 
 .panel,
