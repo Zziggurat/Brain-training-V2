@@ -3,20 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <!-- Configura el viewport al ancho del dispositivo, fija la escala inicial y aprovecha toda la zona segura sin bloquear el zoom -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#000000" />
   <title>Brain training</title>
   <!-- Manifest y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
-  <!-- Metatags para experiencia a pantalla completa en iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Brain training" />
   <meta name="mobile-web-app-capable" content="yes" />
   <!-- Icono para dispositivos Apple -->
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <!-- Color de tema para navegadores compatibles -->
-  <meta name="theme-color" content="#3498db" />
   <!-- DEPLOY_CHECK v1514 Diego -->
   <style>
     :root {
@@ -27,12 +24,9 @@
       height: 100%;
       margin: 0;
       padding: 0;
-    }
-    html {
-      background: transparent !important;
+      background: transparent;
     }
     body {
-      background: transparent !important;
       overflow: hidden;
       overscroll-behavior: none;
       position: relative;
@@ -40,38 +34,33 @@
       touch-action: manipulation;
       isolation: isolate;
     }
-    body::before {
-      content: "";
+    .wallpaper {
       position: fixed;
-      left: 0;
-      right: 0;
-      top: calc(-1 * (env(safe-area-inset-top) + 80px));
-      bottom: calc(-1 * (env(safe-area-inset-bottom) + 80px));
-      top: calc(-1 * (constant(safe-area-inset-top) + 80px));
-      bottom: calc(-1 * (constant(safe-area-inset-bottom) + 80px));
+      inset: 0;
       background: url("assets/ciudad-cyberpunk.png") center/cover no-repeat;
       z-index: 0;
       pointer-events: none;
-      transform: translateZ(0);
     }
-    #app {
+    #root {
       position: fixed;
       inset: 0;
       z-index: 1;
-      box-sizing: border-box;
       display: flex;
       flex-direction: column;
+      box-sizing: border-box;
       padding-top: env(safe-area-inset-top);
       padding-right: env(safe-area-inset-right);
-      padding-bottom: env(safe-area-inset-bottom);
       padding-left: env(safe-area-inset-left);
-      padding-top: constant(safe-area-inset-top);
-      padding-right: constant(safe-area-inset-right);
-      padding-bottom: constant(safe-area-inset-bottom);
-      padding-left: constant(safe-area-inset-left);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 96px);
       background: transparent;
     }
-    .app-scroll {
+    #root {
+      padding-top: constant(safe-area-inset-top);
+      padding-right: constant(safe-area-inset-right);
+      padding-left: constant(safe-area-inset-left);
+      padding-bottom: calc(constant(safe-area-inset-bottom) + 96px);
+    }
+    .scroll {
       flex: 1 1 auto;
       min-height: 0;
       overflow: auto;
@@ -80,9 +69,19 @@
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
-    .app-scroll::-webkit-scrollbar {
+    .scroll::-webkit-scrollbar {
       width: 0;
       height: 0;
+    }
+    .fade-bottom {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 120px;
+      pointer-events: none;
+      z-index: 2;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, #000 85%);
     }
   </style>
   <link rel="preload" as="image" href="assets/ciudad-cyberpunk.png?r=20241102-1514" />
@@ -91,8 +90,10 @@
   <script defer src="script.js?r=20241102-1514"></script>
 </head>
 <body>
-  <div id="app" class="app">
-    <div id="app-scroll" class="app-scroll">
+  <div class="wallpaper" aria-hidden="true"></div>
+
+  <div id="root">
+    <div class="scroll">
       <!-- Pantalla de inicio -->
       <div id="home-screen" class="screen active">
     <div class="home-top-bar">
@@ -276,5 +277,6 @@
     </div>
   </div>
 
+  <div class="fade-bottom" aria-hidden="true"></div>
 </body>
 </html>
