@@ -1078,7 +1078,9 @@ input[type="checkbox"] {
   max-height: 100vh;
   max-height: 100dvh;
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   box-sizing: border-box;
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -1094,10 +1096,8 @@ input[type="checkbox"] {
 }
 
 /* === WALLPAPER (FINAL DEL ARCHIVO) === */
-html,
-body {
+html {
   width: 100%;
-  min-height: 100%;
   min-height: 100dvh;
   background-color: #0b0f1a;
   overflow: hidden;
@@ -1112,13 +1112,12 @@ body {
   isolation: isolate;
 }
 
-body::before {
-  content: "";
+.app-wallpaper {
   position: fixed;
-  top: -48px;
-  right: -48px;
-  bottom: -48px;
-  left: -48px;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background-color: #0b0f1a;
   background-image: url("assets/ciudad-cyberpunk.png?r=20241102-1514"),
     url("assets/ciudad-cyberpunk.png");
@@ -1130,49 +1129,19 @@ body::before {
 }
 
 @supports (top: env(safe-area-inset-top)) {
-  body::before {
-    top: calc(-1 * (env(safe-area-inset-top, 0px) + 24px));
-    right: calc(-1 * (env(safe-area-inset-right, 0px) + 24px));
-    bottom: calc(-1 * (env(safe-area-inset-bottom, 0px) + 24px));
-    left: calc(-1 * (env(safe-area-inset-left, 0px) + 24px));
+  .app-wallpaper {
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    right: calc(-1 * env(safe-area-inset-right, 0px));
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    left: calc(-1 * env(safe-area-inset-left, 0px));
   }
 }
 
 @supports (top: constant(safe-area-inset-top)) {
-  body::before {
-    top: calc(-1 * (constant(safe-area-inset-top) + 24px));
-    right: calc(-1 * (constant(safe-area-inset-right) + 24px));
-    bottom: calc(-1 * (constant(safe-area-inset-bottom) + 24px));
-    left: calc(-1 * (constant(safe-area-inset-left) + 24px));
+  .app-wallpaper {
+    top: calc(-1 * constant(safe-area-inset-top));
+    right: calc(-1 * constant(safe-area-inset-right));
+    bottom: calc(-1 * constant(safe-area-inset-bottom));
+    left: calc(-1 * constant(safe-area-inset-left));
   }
-}
-
-#app,
-.app,
-.overlay,
-.container,
-.wrapper,
-.main,
-.page {
-  background: transparent;
-}
-
-html::before,
-html::after,
-#app::before,
-#app::after,
-.app::before,
-.app::after,
-.overlay::before,
-.overlay::after,
-.container::before,
-.container::after,
-.wrapper::before,
-.wrapper::after,
-.main::before,
-.main::after,
-.page::before,
-.page::after {
-  content: none;
-  background: transparent;
 }
