@@ -24,13 +24,6 @@
 
 * {
   box-sizing: border-box;
-  scrollbar-width: none;
-}
-
-*::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
 }
 
 img,
@@ -79,6 +72,7 @@ button:disabled {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 
 .screen.active {
@@ -1015,9 +1009,29 @@ input[type="checkbox"] {
   flex-direction: column;
   gap: 6px;
   flex: 1;
-  overflow: hidden;
-  padding-right: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
   padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-color: rgba(244, 247, 255, 0.45) rgba(5, 7, 13, 0.3);
+}
+
+.table-rows::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-rows::-webkit-scrollbar-track {
+  background: rgba(5, 7, 13, 0.35);
+  border-radius: 999px;
+}
+
+.table-rows::-webkit-scrollbar-thumb {
+  background: rgba(244, 247, 255, 0.38);
+  border-radius: 999px;
+  border: 2px solid rgba(5, 7, 13, 0.35);
 }
 
 .table-row {
@@ -1088,16 +1102,27 @@ input[type="checkbox"] {
 .scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-color: rgba(244, 247, 255, 0.45) rgba(5, 7, 13, 0.3);
 }
 
 .scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 10px;
+}
+
+.scroll::-webkit-scrollbar-track {
+  background: rgba(5, 7, 13, 0.35);
+  border-radius: 999px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  background: rgba(244, 247, 255, 0.35);
+  border-radius: 999px;
+  border: 2px solid rgba(5, 7, 13, 0.35);
 }
 
 .fade-bottom {
