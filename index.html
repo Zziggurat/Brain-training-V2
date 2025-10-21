@@ -3,59 +3,123 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <!-- Configura el viewport al ancho del dispositivo, fija la escala inicial y aprovecha toda la zona segura sin bloquear el zoom -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#000000" />
   <title>Brain training</title>
   <!-- Manifest y configuración para PWA -->
   <link rel="manifest" href="manifest.json" />
-  <!-- Metatags para experiencia a pantalla completa en iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Brain training" />
   <meta name="mobile-web-app-capable" content="yes" />
   <!-- Icono para dispositivos Apple -->
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <!-- Color de tema para navegadores compatibles -->
-  <meta name="theme-color" content="#3498db" />
   <!-- DEPLOY_CHECK v1514 Diego -->
   <style>
-    html {
-      background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
-      background-size: cover;
+    :root {
+      color-scheme: dark;
+    }
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: transparent;
     }
     body {
-      background: transparent;
-      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      position: relative;
+      z-index: 0;
+      touch-action: manipulation;
+      isolation: isolate;
     }
-    #app,
-    .app,
-    .overlay,
-    .container,
-    .wrapper,
-    .main,
-    .page {
+    .wallpaper {
+      position: fixed;
+      inset: 0;
+      background: url("assets/ciudad-cyberpunk.png") center/cover no-repeat;
+      z-index: 0;
+      pointer-events: none;
+    }
+    #root {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top);
+      padding-right: env(safe-area-inset-right);
+      padding-left: env(safe-area-inset-left);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 46px);
       background: transparent;
     }
-    html::before,
-    html::after,
-    body::before,
-    body::after,
-    #app::before,
-    #app::after,
-    .app::before,
-    .app::after,
-    .overlay::before,
-    .overlay::after,
-    .container::before,
-    .container::after,
-    .wrapper::before,
-    .wrapper::after,
-    .main::before,
-    .main::after,
-    .page::before,
-    .page::after {
-      content: none;
-      background: transparent;
+    #root {
+      padding-top: constant(safe-area-inset-top);
+      padding-right: constant(safe-area-inset-right);
+      padding-left: constant(safe-area-inset-left);
+      padding-bottom: calc(constant(safe-area-inset-bottom) + 46px);
+    }
+    .scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable both-edges;
+    }
+    .scroll::-webkit-scrollbar {
+      width: 10px;
+    }
+    .scroll::-webkit-scrollbar-track {
+      background: rgba(5, 7, 13, 0.35);
+      border-radius: 999px;
+    }
+    .scroll::-webkit-scrollbar-thumb {
+      background: rgba(244, 247, 255, 0.35);
+      border-radius: 999px;
+      border: 2px solid rgba(5, 7, 13, 0.35);
+    }
+    .scroll {
+      scrollbar-color: rgba(244, 247, 255, 0.45) rgba(5, 7, 13, 0.3);
+    }
+    .fade-bottom {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 160px;
+      pointer-events: none;
+      z-index: 2;
+      background:
+        radial-gradient(
+          ellipse 55% 46px at 50% 100%,
+          rgba(0, 0, 0, 0.95) 0%,
+          rgba(0, 0, 0, 0.8) 60%,
+          rgba(0, 0, 0, 0) 100%
+        ),
+        linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0) 0%,
+          rgba(0, 0, 0, 0.85) 70%,
+          #000 100%
+        );
+    }
+
+    .bottom-tint {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 18vh;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.06) 100%
+      );
+      pointer-events: none;
+      z-index: 1;
     }
   </style>
   <link rel="preload" as="image" href="assets/ciudad-cyberpunk.png?r=20241102-1514" />
@@ -64,9 +128,13 @@
   <script defer src="script.js?r=20241102-1514"></script>
 </head>
 <body>
-  <div id="app" class="app">
-  <!-- Pantalla de inicio -->
-  <div id="home-screen" class="screen active">
+  <div class="wallpaper" aria-hidden="true"></div>
+  <div class="bottom-tint" aria-hidden="true"></div>
+
+  <div id="root">
+    <div class="scroll">
+      <!-- Pantalla de inicio -->
+      <div id="home-screen" class="screen active">
     <div class="home-top-bar">
       <button
         id="home-settings-btn"
@@ -212,6 +280,7 @@
     <div id="train-answer-area" class="answer-area"></div>
     <div id="train-feedback" class="feedback"></div>
     <div id="train-score" class="score"></div>
+    <button id="train-skip-btn">Mostrar respuesta</button>
     <button id="train-restart-btn" class="hidden">Reintentar</button>
   </div>
 
@@ -243,9 +312,10 @@
     <div id="result-card" class="result-card" aria-live="polite"></div>
   </div>
 
-  <footer class="version-tag" aria-label="Marcador de versión"></footer>
-
+      <footer class="version-tag" aria-label="Marcador de versión"></footer>
+    </div>
   </div>
 
+  <div class="fade-bottom" aria-hidden="true"></div>
 </body>
 </html>
