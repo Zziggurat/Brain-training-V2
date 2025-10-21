@@ -74,6 +74,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const trainFeedbackDiv = document.getElementById('train-feedback');
   const trainScoreDiv = document.getElementById('train-score');
   const trainRestartBtn = document.getElementById('train-restart-btn');
+  const trainSkipBtn = document.getElementById('train-skip-btn');
+  const TRAIN_SKIP_ARIA =
+    'Mostrar la respuesta correcta y avanzar al siguiente problema de entrenamiento';
+  if (trainSkipBtn) {
+    trainSkipBtn.textContent = LEARN_SKIP_TEXT;
+    trainSkipBtn.setAttribute('aria-label', TRAIN_SKIP_ARIA);
+    trainSkipBtn.classList.add('hidden');
+  }
+
+  const TRAINING_CONTEXT = Object.freeze({
+    GENERAL: 'general',
+    SPECIFIC: 'specific',
+  });
+  let trainingSessionContext = TRAINING_CONTEXT.GENERAL;
+  let trainingHasMistake = false;
 
   // Elementos de la pantalla de progreso
   const progressBackBtn = document.getElementById('progress-back-btn');
@@ -87,6 +102,55 @@ document.addEventListener('DOMContentLoaded', () => {
   // Panel de asistente en la pantalla de inicio
   const assistantPanel = document.getElementById('assistant-panel');
 
+  const docEl = document.documentElement;
+  const WALLPAPER_ASPECT = 1600 / 896;
+  const WALLPAPER_MAX_WIDTH = 896;
+
+  function updateHomeTrackHeight() {
+    if (!docEl) {
+      return;
+    }
+    const viewportWidth = window.innerWidth || WALLPAPER_MAX_WIDTH;
+    const limitedWidth = Math.min(viewportWidth, WALLPAPER_MAX_WIDTH);
+    const ratioHeight = limitedWidth * WALLPAPER_ASPECT;
+    const viewportHeight = window.innerHeight || ratioHeight;
+    const targetHeight = Math.max(viewportHeight, ratioHeight);
+    docEl.style.setProperty('--home-track-height', `${targetHeight}px`);
+  }
+
+  updateHomeTrackHeight();
+  window.addEventListener('resize', updateHomeTrackHeight);
+  window.addEventListener('orientationchange', updateHomeTrackHeight);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateHomeTrackHeight);
+  }
+
+  const blockGesture = (event) => {
+    if (event.touches && event.touches.length > 1) {
+      event.preventDefault();
+    }
+  };
+
+  let lastTouchEnd = 0;
+  const preventDoubleTapZoom = (event) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 350) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  };
+
+  const preventGesture = (event) => {
+    event.preventDefault();
+  };
+
+  document.addEventListener('touchstart', blockGesture, { passive: false });
+  document.addEventListener('touchmove', blockGesture, { passive: false });
+  document.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
+  document.addEventListener('gesturestart', preventGesture, { passive: false });
+  document.addEventListener('gesturechange', preventGesture, { passive: false });
+  document.addEventListener('gestureend', preventGesture, { passive: false });
+
   // Variable para registrar si hubo un intento incorrecto en el problema actual (modo aprendizaje)
   let learningHasWrongAttempt = false;
 
@@ -99,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const startSpecificBtn = document.getElementById('start-specific-btn');
 
   // Almacena la lista de problemas del entrenamiento específico actual (si existe)
-  let currentSpecificProblems = null;
+  let currentSpecificSelection = null;
   let tablesRenderHandle = null;
   let tableCardObserver = null;
   const rowResetQueue = [];
@@ -1079,6 +1143,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function buildHeatmap() {
     if (!heatmapContainer) return;
     heatmapContainer.innerHTML = '';
+    heatmapContainer.scrollTop = 0;
+    heatmapContainer.scrollLeft = 0;
     const { min, max } = getActiveModeConfig();
     const operation = getActiveOperation();
     const size = max - min + 1;
@@ -1506,6 +1572,50 @@ document.addEventListener('DOMContentLoaded', () => {
   let trainTotalSeconds = 0;
   let trainTypedAnswer = '';
   let trainQuestionStartTime = 0;
+
+  function showTrainSkipButton() {
+    if (!trainSkipBtn) return;
+    trainSkipBtn.classList.remove('hidden');
+    trainSkipBtn.disabled = false;
+  }
+
+  function disableTrainSkipButton() {
+    if (!trainSkipBtn) return;
+    trainSkipBtn.disabled = true;
+  }
+
+  function hideTrainSkipButton() {
+    if (!trainSkipBtn) return;
+    trainSkipBtn.classList.add('hidden');
+    trainSkipBtn.disabled = true;
+  }
+
+  function applyTrainingSkipPolicy() {
+    if (!trainSkipBtn) return;
+    if (trainingSessionContext === TRAINING_CONTEXT.SPECIFIC && trainingHasMistake) {
+      showTrainSkipButton();
+    } else {
+      hideTrainSkipButton();
+    }
+  }
+
+  function configureTrainingSession(context) {
+    trainingSessionContext = context;
+    trainingHasMistake = false;
+    applyTrainingSkipPolicy();
+  }
+
+  function scheduleNextTrainingQuestion(delay = 800) {
+    const advance = () => {
+      if (trainIndex < trainProblems.length - 1) {
+        trainIndex++;
+        renderTrainingProblem();
+      } else {
+        handleTrainFinish();
+      }
+    };
+    setTimeout(advance, delay);
+  }
 
   /**
    * Actualizar la interfaz de entrenamiento específico.
@@ -2392,13 +2502,14 @@ document.addEventListener('DOMContentLoaded', () => {
    * Iniciar sesión de entrenamiento.
    */
   function startTrainingSession() {
+    configureTrainingSession(TRAINING_CONTEXT.GENERAL);
     trainProblems = generateProblems();
     trainIndex = 0;
     trainCorrectCount = 0;
     trainTypedAnswer = '';
     trainScoreDiv.textContent = '';
     trainRestartBtn.classList.add('hidden');
-    currentSpecificProblems = null;
+    currentSpecificSelection = null;
     showScreen('training');
     renderTrainingProblem();
   }
@@ -2418,6 +2529,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     trainQuestionStartTime = Date.now();
+    applyTrainingSkipPolicy();
 
     trainFeedbackDiv.textContent = '';
     trainFeedbackDiv.style.color = '#2c3e50';
@@ -2425,7 +2537,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trainTypedAnswer = '';
 
     // Iniciar o ocultar el temporizador según el tipo de entrenamiento
-    if (currentSpecificProblems) {
+    if (isSpecificTrainingActive()) {
       // Entrenamiento específico: sin cronómetro
       if (trainTimer) {
         clearInterval(trainTimer);
@@ -2533,6 +2645,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.forEach((b) => {
       b.disabled = true;
     });
+    disableTrainSkipButton();
     // Registrar la pregunta respondida
     stats.totalQuestions++;
     const currentProblem = trainProblems[trainIndex];
@@ -2543,9 +2656,11 @@ document.addEventListener('DOMContentLoaded', () => {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: currentSpecificProblems ? 'specific' : 'training',
+      mode: isSpecificTrainingActive() ? 'specific' : 'training',
       source: 'multiple-choice',
     });
+    const isSpecificContext = trainingSessionContext === TRAINING_CONTEXT.SPECIFIC;
+
     if (isCorrect) {
       // Correcto: marcar en verde y continuar al siguiente problema
       trainCorrectCount++;
@@ -2556,32 +2671,38 @@ document.addEventListener('DOMContentLoaded', () => {
       // Guardar estadísticas
       saveStats();
       // Esperar brevemente y avanzar al siguiente problema
-      setTimeout(() => {
-        if (trainIndex < trainProblems.length - 1) {
-          trainIndex++;
-          renderTrainingProblem();
-        } else {
-          handleTrainFinish();
-        }
-      }, 500);
+      scheduleNextTrainingQuestion(500);
     } else {
-      // Incorrecto: marcar opciones y finalizar la sesión (pierdes)
-      trainFeedbackDiv.textContent = '¡Respuesta incorrecta! Sesión terminada.';
-      trainFeedbackDiv.style.color = '#c0392b';
-      buttons.forEach((b) => {
-        const val = parseInt(b.textContent, 10);
-        if (val === correct) {
-          b.classList.add('correct');
-        } else {
-          b.classList.add('incorrect');
-        }
-      });
-      // Guardar estadísticas
-      saveStats();
-      // Finalizar entrenamiento por error después de un breve retraso
-      setTimeout(() => {
-        endTrainingDueToError();
-      }, 800);
+      trainingHasMistake = true;
+      if (isSpecificContext) {
+        btn.classList.add('incorrect');
+        trainFeedbackDiv.textContent = 'Respuesta incorrecta. Intenta nuevamente o usa "Mostrar respuesta".';
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        applyTrainingSkipPolicy();
+        buttons.forEach((b) => {
+          if (b === btn) {
+            return;
+          }
+          b.disabled = false;
+          b.classList.remove('incorrect');
+          b.classList.remove('correct');
+        });
+        btn.disabled = true;
+      } else {
+        buttons.forEach((b) => {
+          const val = parseInt(b.textContent, 10);
+          if (val === correct) {
+            b.classList.add('correct');
+          } else {
+            b.classList.add('incorrect');
+          }
+        });
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        const correctText = String(correct);
+        handleTrainFail('wrong', correctText);
+      }
     }
   }
 
@@ -2599,6 +2720,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trainAnswerArea.querySelectorAll('button').forEach((btn) => {
       btn.disabled = true;
     });
+    disableTrainSkipButton();
     stats.totalQuestions++;
     const currentProblem = trainProblems[trainIndex];
     const now = Date.now();
@@ -2609,9 +2731,11 @@ document.addEventListener('DOMContentLoaded', () => {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: currentSpecificProblems ? 'specific' : 'training',
+      mode: isSpecificTrainingActive() ? 'specific' : 'training',
       source: 'written',
     });
+    const isSpecificContext = trainingSessionContext === TRAINING_CONTEXT.SPECIFIC;
+
     if (isCorrect) {
       // Correcto: sumar puntaje y continuar
       trainCorrectCount++;
@@ -2620,24 +2744,30 @@ document.addEventListener('DOMContentLoaded', () => {
       trainFeedbackDiv.textContent = '¡Correcto!';
       trainFeedbackDiv.style.color = '#27ae60';
       saveStats();
-      setTimeout(() => {
-        if (trainIndex < trainProblems.length - 1) {
-          trainIndex++;
-          renderTrainingProblem();
-        } else {
-          handleTrainFinish();
-        }
-      }, 500);
+      scheduleNextTrainingQuestion(500);
     } else {
-      // Incorrecto: finalizar sesión inmediatamente
+      trainingHasMistake = true;
+      const correctText = String(correct);
       display.classList.add('incorrect');
-      trainFeedbackDiv.textContent = `¡Respuesta incorrecta! La respuesta correcta era ${correct}. Sesión terminada.`;
-      trainFeedbackDiv.style.color = '#c0392b';
-      // Guardar estadísticas
-      saveStats();
-      setTimeout(() => {
-        endTrainingDueToError();
-      }, 800);
+      if (isSpecificContext) {
+        trainFeedbackDiv.textContent = 'Respuesta incorrecta. Intenta nuevamente o usa "Mostrar respuesta".';
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        applyTrainingSkipPolicy();
+        trainAnswerArea.querySelectorAll('button').forEach((btn) => {
+          btn.disabled = false;
+        });
+        trainTypedAnswer = '';
+        setTimeout(() => {
+          display.classList.remove('incorrect');
+        }, 220);
+        display.textContent = '';
+      } else {
+        display.textContent = correctText;
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        handleTrainFail('wrong', correctText);
+      }
     }
   }
 
@@ -2648,6 +2778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
     }
+    hideTrainSkipButton();
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     trainFeedbackDiv.textContent = '¡Sesión completada!';
     trainFeedbackDiv.style.color = '#27ae60';
@@ -2663,6 +2794,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
     }
+    hideTrainSkipButton();
     // Mostrar puntuación alcanzada antes del fallo
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     // El mensaje ya se ha establecido antes de llamar a esta función
@@ -2674,11 +2806,13 @@ document.addEventListener('DOMContentLoaded', () => {
    * Manejar finalización del entrenamiento por error o tiempo.
    * @param {string} reason - 'time' o 'wrong'.
    */
-  function handleTrainFail(reason) {
+  function handleTrainFail(reason, correctAnswerText = null) {
     // Manejo de fallo durante el entrenamiento: ya sea por tiempo o respuesta incorrecta.
     if (trainTimer) {
       clearInterval(trainTimer);
     }
+    disableTrainSkipButton();
+    applyTrainingSkipPolicy();
     const currentProblem = trainProblems[trainIndex];
     if (currentProblem) {
       const now = Date.now();
@@ -2687,7 +2821,7 @@ document.addEventListener('DOMContentLoaded', () => {
         correct: false,
         timeTaken,
         skipped: false,
-        mode: currentSpecificProblems ? 'specific' : 'training',
+        mode: isSpecificTrainingActive() ? 'specific' : 'training',
         source: reason === 'time' ? 'timeout' : 'system',
         timedOut: reason === 'time',
       });
@@ -2699,6 +2833,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mostrar mensaje según el tipo de fallo
     if (reason === 'time') {
       trainFeedbackDiv.textContent = '¡Tiempo agotado! Sesión terminada.';
+    } else if (typeof correctAnswerText === 'string' && correctAnswerText.length > 0) {
+      trainFeedbackDiv.textContent = `¡Respuesta incorrecta! La Respuesta es ${correctAnswerText}.`;
     } else {
       trainFeedbackDiv.textContent = '¡Respuesta incorrecta! Sesión terminada.';
     }
@@ -2714,8 +2850,14 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {Array} problemList - Lista de problemas a entrenar.
    */
   function startSpecificTrainingSession(problemList) {
-    currentSpecificProblems = problemList;
-    trainProblems = problemList;
+    if (Array.isArray(problemList) && problemList.length > 0) {
+      currentSpecificSelection = problemList.map((prob) => ({ ...prob }));
+    }
+    if (!isSpecificTrainingActive()) {
+      return;
+    }
+    configureTrainingSession(TRAINING_CONTEXT.SPECIFIC);
+    trainProblems = generateSpecificProblems(currentSpecificSelection);
     trainIndex = 0;
     trainCorrectCount = 0;
     trainTypedAnswer = '';
@@ -2723,6 +2865,10 @@ document.addEventListener('DOMContentLoaded', () => {
     trainRestartBtn.classList.add('hidden');
     showScreen('training');
     renderTrainingProblem();
+  }
+
+  function isSpecificTrainingActive() {
+    return Array.isArray(currentSpecificSelection) && currentSpecificSelection.length > 0;
   }
 
   function resetTableCardObserver() {
@@ -3163,11 +3309,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
       });
     }
+    if (trainSkipBtn) {
+      trainSkipBtn.addEventListener('click', () => {
+        if (trainSkipBtn.disabled) {
+          return;
+        }
+        const problem = trainProblems[trainIndex];
+        if (!problem) {
+          return;
+        }
+        if (trainTimer) {
+          clearInterval(trainTimer);
+        }
+        disableTrainSkipButton();
+        const answerButtons = trainAnswerArea.querySelectorAll('button');
+        answerButtons.forEach((btn) => {
+          btn.disabled = true;
+        });
+        const correct = problem.answer;
+        const now = Date.now();
+        const timeTaken = now - trainQuestionStartTime;
+        const { multipleChoice } = getActiveModeConfig();
+        if (multipleChoice) {
+          answerButtons.forEach((btn) => {
+            const val = parseInt(btn.textContent, 10);
+            if (val === correct) {
+              btn.classList.add('correct');
+            } else {
+              btn.classList.remove('incorrect');
+            }
+          });
+        } else {
+          const display = trainAnswerArea.querySelector('#train-display');
+          if (display) {
+            display.textContent = String(correct);
+            display.classList.remove('incorrect');
+            display.classList.add('correct');
+          }
+        }
+        stats.totalQuestions++;
+        recordProblemAttempt(problem, {
+          correct: false,
+          timeTaken,
+          skipped: true,
+          mode: isSpecificTrainingActive() ? 'specific' : 'training',
+          source: 'skip',
+        });
+        trainFeedbackDiv.textContent = `La respuesta era ${correct}.`;
+        trainFeedbackDiv.style.color = '#c0392b';
+        saveStats();
+        scheduleNextTrainingQuestion(1000);
+      });
+    }
     // Reiniciar entrenamiento
     trainRestartBtn.addEventListener('click', () => {
       // Si hay una lista de problemas específicos, reiniciar esa sesión; de lo contrario, sesión aleatoria
-      if (currentSpecificProblems && Array.isArray(currentSpecificProblems)) {
-        startSpecificTrainingSession(currentSpecificProblems);
+      if (isSpecificTrainingActive()) {
+        startSpecificTrainingSession();
       } else {
         startTrainingSession();
       }
@@ -3229,9 +3427,7 @@ document.addEventListener('DOMContentLoaded', () => {
           alert('Selecciona al menos una tabla y un número para entrenar.');
           return;
         }
-        // Generar lista de problemas específicos con mejor aleatoriedad y sin repeticiones consecutivas
-        const problemsList = generateSpecificProblems(selectedProblems);
-        startSpecificTrainingSession(problemsList);
+        startSpecificTrainingSession(selectedProblems);
       });
     }
     // Mostrar pantalla de inicio

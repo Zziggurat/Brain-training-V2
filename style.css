@@ -19,6 +19,9 @@
   --heatmap-gap: clamp(6px, 1vw, 12px);
   --header-button-size: clamp(48px, 6.4vw, 64px);
   --keypad-width: var(--practice-width);
+  --wallpaper-aspect: 1.7857142857;
+  --wallpaper-max-width: 896px;
+  --home-track-height: 100dvh;
   font-size: clamp(15px, 1vw + 14px, 18px);
 }
 
@@ -62,12 +65,14 @@ button:disabled {
 .screen {
   display: none;
   width: 100%;
+  max-width: 100vw;
   min-height: 100%;
-  padding: calc(env(safe-area-inset-top, 0px) + 24px) var(--layout-padding)
-    calc(env(safe-area-inset-bottom, 0px) + 32px);
+  padding: 24px var(--layout-padding) 32px;
   position: relative;
   box-sizing: border-box;
-  overflow: visible;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .screen.active {
@@ -104,15 +109,26 @@ button:disabled {
   align-items: center;
   gap: clamp(24px, 6vh, 48px);
   position: relative;
-  scrollbar-gutter: stable both-edges;
+  min-height: var(--home-track-height);
+}
+
+#home-screen::after {
+  content: '';
+  display: block;
+  height: max(
+    0px,
+    calc(
+      (min(100vw, var(--wallpaper-max-width)) * var(--wallpaper-aspect)) - 100dvh
+    )
+  );
 }
 
 #learning-screen,
 #training-screen {
   align-items: center;
   justify-content: flex-start;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding-top: 20px;
+  padding-bottom: 24px;
 }
 
 #learning-screen.active,
@@ -177,7 +193,6 @@ button:disabled {
 
 .operation-toggle {
   display: inline-flex;
-  flex-direction: row-reverse;
   padding: clamp(4px, 1.2vw, 8px);
   border-radius: clamp(22px, 4vw, 32px);
   background: rgba(9, 14, 25, 0.65);
@@ -258,6 +273,7 @@ button:disabled {
 #config-save-btn,
 #learn-next-btn,
 #learn-skip-btn,
+#train-skip-btn,
 #train-restart-btn,
 #start-specific-btn,
 #reset-progress-btn,
@@ -277,6 +293,7 @@ button:disabled {
 #config-save-btn:active,
 #learn-next-btn:active,
 #learn-skip-btn:active,
+#train-skip-btn:active,
 #train-restart-btn:active,
 #home-progress-btn:active,
 #start-specific-btn:active {
@@ -342,10 +359,7 @@ button:disabled {
   flex-direction: column;
   align-items: stretch;
   gap: clamp(10px, 2.6vw, 16px);
-  overflow-x: auto;
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 .screen.active {
@@ -677,12 +691,14 @@ input[type="checkbox"] {
 
 #learn-next-btn,
 #learn-skip-btn,
+#train-skip-btn,
 #train-restart-btn {
   max-width: var(--keypad-width);
   align-self: center;
 }
 
-#learn-skip-btn {
+#learn-skip-btn,
+#train-skip-btn {
   margin-top: 4px;
 }
 
@@ -745,9 +761,8 @@ input[type="checkbox"] {
   backdrop-filter: blur(22px);
   box-shadow: 0 36px 80px rgba(5, 7, 13, 0.5);
   overflow: auto;
-  scrollbar-gutter: stable both-edges;
-  overscroll-behavior: contain;
-  height: clamp(420px, 72vh, 860px);
+  max-height: clamp(480px, 75vh, 960px);
+  -webkit-overflow-scrolling: touch;
   position: relative;
 }
 
@@ -1008,26 +1023,28 @@ input[type="checkbox"] {
   gap: 6px;
   flex: 1;
   overflow-y: auto;
-  overflow-x: auto;
-  padding-right: 8px;
+  overflow-x: hidden;
+  padding-right: 18px;
   padding-bottom: 4px;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-color: rgba(244, 247, 255, 0.45) rgba(5, 7, 13, 0.3);
 }
 
 .table-rows::-webkit-scrollbar {
   width: 8px;
-  height: 8px;
-}
-
-.table-rows::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 999px;
 }
 
 .table-rows::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(5, 7, 13, 0.35);
   border-radius: 999px;
+}
+
+.table-rows::-webkit-scrollbar-thumb {
+  background: rgba(244, 247, 255, 0.38);
+  border-radius: 999px;
+  border: 2px solid rgba(5, 7, 13, 0.35);
 }
 
 .table-row {
@@ -1072,24 +1089,29 @@ input[type="checkbox"] {
 .problem-card.flip .card-front {
   animation: flip-card 0.6s forwards;
 }
-#app,
-.app {
+#root {
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 32px);
+  max-width: 100vw;
+  min-height: 100dvh;
   box-sizing: border-box;
-  scrollbar-width: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-top: constant(safe-area-inset-top);
+  padding-right: constant(safe-area-inset-right);
+  padding-left: constant(safe-area-inset-left);
+  padding-bottom: constant(safe-area-inset-bottom);
+  background: transparent;
 }
 
-#app::-webkit-scrollbar,
-.app::-webkit-scrollbar {
-  display: none;
+.scroll {
+  flex: 1 1 auto;
+  min-height: 100%;
+  width: 100%;
 }
 
 .panel,
@@ -1101,49 +1123,26 @@ input[type="checkbox"] {
 }
 
 /* === WALLPAPER (FINAL DEL ARCHIVO) === */
-html,
-body {
-  height: 100%;
-}
-
 html {
-  background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20241102-1514") no-repeat center center fixed;
-  background-size: cover;
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 body {
-  background: transparent;
   margin: 0;
+  padding: 0;
+  color: var(--text-color);
+  touch-action: manipulation;
+  position: relative;
+  isolation: isolate;
+  background: #000 url("assets/ciudad-cyberpunk.png") center top / cover no-repeat;
+  background-attachment: scroll;
+  background-position: center top;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-#app,
-.app,
-.overlay,
-.container,
-.wrapper,
-.main,
-.page {
-  background: transparent;
-}
-
-html::before,
-html::after,
-body::before,
-body::after,
-#app::before,
-#app::after,
-.app::before,
-.app::after,
-.overlay::before,
-.overlay::after,
-.container::before,
-.container::after,
-.wrapper::before,
-.wrapper::after,
-.main::before,
-.main::after,
-.page::before,
-.page::after {
-  content: none;
-  background: transparent;
-}
