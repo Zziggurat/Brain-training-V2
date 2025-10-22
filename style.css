@@ -1114,14 +1114,17 @@ input[type="checkbox"] {
 .scroll::before {
   content: '';
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
+  top: calc(-1 * constant(safe-area-inset-top));
+  top: calc(-1 * env(safe-area-inset-top, 0px));
   height: calc(
-    var(--wallpaper-track-height) + constant(safe-area-inset-bottom) + 64px
+    var(--wallpaper-track-height) + constant(safe-area-inset-top) +
+      constant(safe-area-inset-bottom)
   );
   height: calc(
-    var(--wallpaper-track-height) + env(safe-area-inset-bottom) + 64px
+    var(--wallpaper-track-height) + env(safe-area-inset-top, 0px) +
+      env(safe-area-inset-bottom, 0px)
   );
   background: url("assets/ciudad-cyberpunk.png") center top / cover no-repeat;
   pointer-events: none;
