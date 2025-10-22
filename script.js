@@ -102,6 +102,55 @@ document.addEventListener('DOMContentLoaded', () => {
   // Panel de asistente en la pantalla de inicio
   const assistantPanel = document.getElementById('assistant-panel');
 
+  const docEl = document.documentElement;
+  const WALLPAPER_ASPECT = 1600 / 896;
+  const WALLPAPER_MAX_WIDTH = 896;
+
+  function updateHomeTrackHeight() {
+    if (!docEl) {
+      return;
+    }
+    const viewportWidth = window.innerWidth || WALLPAPER_MAX_WIDTH;
+    const limitedWidth = Math.min(viewportWidth, WALLPAPER_MAX_WIDTH);
+    const ratioHeight = limitedWidth * WALLPAPER_ASPECT;
+    const viewportHeight = window.innerHeight || ratioHeight;
+    const targetHeight = Math.max(viewportHeight, ratioHeight);
+    docEl.style.setProperty('--home-track-height', `${targetHeight}px`);
+  }
+
+  updateHomeTrackHeight();
+  window.addEventListener('resize', updateHomeTrackHeight);
+  window.addEventListener('orientationchange', updateHomeTrackHeight);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateHomeTrackHeight);
+  }
+
+  const blockGesture = (event) => {
+    if (event.touches && event.touches.length > 1) {
+      event.preventDefault();
+    }
+  };
+
+  let lastTouchEnd = 0;
+  const preventDoubleTapZoom = (event) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 350) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  };
+
+  const preventGesture = (event) => {
+    event.preventDefault();
+  };
+
+  document.addEventListener('touchstart', blockGesture, { passive: false });
+  document.addEventListener('touchmove', blockGesture, { passive: false });
+  document.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
+  document.addEventListener('gesturestart', preventGesture, { passive: false });
+  document.addEventListener('gesturechange', preventGesture, { passive: false });
+  document.addEventListener('gestureend', preventGesture, { passive: false });
+
   // Variable para registrar si hubo un intento incorrecto en el problema actual (modo aprendizaje)
   let learningHasWrongAttempt = false;
 
@@ -1094,6 +1143,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function buildHeatmap() {
     if (!heatmapContainer) return;
     heatmapContainer.innerHTML = '';
+    heatmapContainer.scrollTop = 0;
+    heatmapContainer.scrollLeft = 0;
     const { min, max } = getActiveModeConfig();
     const operation = getActiveOperation();
     const size = max - min + 1;
