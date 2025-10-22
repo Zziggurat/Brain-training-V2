@@ -22,6 +22,7 @@
   --wallpaper-aspect: 1.7857142857;
   --wallpaper-max-width: 896px;
   --home-track-height: 100dvh;
+  --wallpaper-track-height: 100dvh;
   font-size: clamp(15px, 1vw + 14px, 18px);
 }
 
@@ -109,18 +110,13 @@ button:disabled {
   align-items: center;
   gap: clamp(24px, 6vh, 48px);
   position: relative;
-  min-height: var(--home-track-height);
+  min-height: var(--wallpaper-track-height);
 }
 
 #home-screen::after {
   content: '';
   display: block;
-  height: max(
-    0px,
-    calc(
-      (min(100vw, var(--wallpaper-max-width)) * var(--wallpaper-aspect)) - 100dvh
-    )
-  );
+  height: max(0px, calc(var(--wallpaper-track-height) - 100dvh));
 }
 
 #learning-screen,
@@ -1112,6 +1108,24 @@ input[type="checkbox"] {
   flex: 1 1 auto;
   min-height: 100%;
   width: 100%;
+  position: relative;
+}
+
+.scroll::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(
+    var(--wallpaper-track-height) + constant(safe-area-inset-bottom) + 64px
+  );
+  height: calc(
+    var(--wallpaper-track-height) + env(safe-area-inset-bottom) + 64px
+  );
+  background: url("assets/ciudad-cyberpunk.png") center top / cover no-repeat;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .panel,
@@ -1138,10 +1152,12 @@ body {
   touch-action: manipulation;
   position: relative;
   isolation: isolate;
-  background: #000 url("assets/ciudad-cyberpunk.png") center top / cover no-repeat;
-  background-attachment: scroll;
-  background-position: center top;
+  background: #000;
   min-height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+body::before {
+  content: none;
 }

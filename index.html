@@ -24,6 +24,7 @@
       --wallpaper-aspect: 1.7857142857;
       --wallpaper-max-width: 896px;
       --home-track-height: 100dvh;
+      --wallpaper-track-height: 100dvh;
     }
     html,
     body {
@@ -32,10 +33,7 @@
       padding: 0;
     }
     body {
-      background: #000 url("assets/ciudad-cyberpunk.png") center top / cover
-        no-repeat;
-      background-attachment: scroll;
-      background-position: center top;
+      background: #000;
       min-height: 100dvh;
       overscroll-behavior: none;
       position: relative;
@@ -44,6 +42,9 @@
       isolation: isolate;
       overflow-x: hidden;
       overflow-y: auto;
+    }
+    body::before {
+      content: none;
     }
     #root {
       position: relative;
@@ -59,17 +60,14 @@
       background: transparent;
     }
     #home-screen {
-      min-height: var(--home-track-height);
+      min-height: var(--wallpaper-track-height);
     }
     #home-screen::after {
       content: '';
       display: block;
       height: max(
         0px,
-        calc(
-          (min(100vw, var(--wallpaper-max-width)) * var(--wallpaper-aspect)) -
-            100dvh
-        )
+        calc(var(--wallpaper-track-height) - 100dvh)
       );
     }
     #root {
@@ -82,6 +80,25 @@
       flex: 1 1 auto;
       min-height: 100%;
       width: 100%;
+      position: relative;
+    }
+
+    .scroll::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: calc(
+        var(--wallpaper-track-height) + constant(safe-area-inset-bottom) + 64px
+      );
+      height: calc(
+        var(--wallpaper-track-height) + env(safe-area-inset-bottom) + 64px
+      );
+      background: url("assets/ciudad-cyberpunk.png") center top / cover
+        no-repeat;
+      pointer-events: none;
+      z-index: -1;
     }
   </style>
   <link rel="preload" as="image" href="assets/ciudad-cyberpunk.png?r=20241102-1514" />

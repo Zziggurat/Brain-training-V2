@@ -116,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewportHeight = window.innerHeight || ratioHeight;
     const targetHeight = Math.max(viewportHeight, ratioHeight);
     docEl.style.setProperty('--home-track-height', `${targetHeight}px`);
+    docEl.style.setProperty('--wallpaper-track-height', `${targetHeight}px`);
   }
 
   updateHomeTrackHeight();
