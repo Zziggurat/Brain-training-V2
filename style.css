@@ -1146,74 +1146,44 @@ input[type="checkbox"] {
   border-radius: 24px;
 }
 
-/* === WALLPAPER (FINAL DEL ARCHIVO) === */
++/* --- Ajustes personalizados para Brain-training V2 --- */
++
++/* Aplicar el fondo de pantalla directamente al elemento html,
++   incluyendo las zonas seguras (safe area) tanto superior como inferior.
++   Se utiliza un parámetro de versión (`r=20251103-1530`) para forzar la
++   recarga del recurso en la PWA y evitar cachés obsoletos. */
 html {
   width: 100%;
-  min-height: 100dvh;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  /* Usar el mismo fondo que la versión principal para cubrir las safe zones */
-  background: #0b0f1a url("assets/ciudad-cyberpunk.png") no-repeat center center fixed;
+  /* Extiende la altura al alto de la ventana más las zonas seguras */
+  min-height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  /* Fondo estilo cyberpunk igual que la versión principal */
+  background: #0b0f1a url("assets/ciudad-cyberpunk.png?r=20251103-1530") no-repeat center center fixed;
   background-size: cover;
 }
 
-/* ================================================
-   Ajustes de fondo y scroll para Brain‑training V2
-   ------------------------------------------------
-   Para evitar el fondo duplicado y las barras de
-   desplazamiento visibles, se sobrescriben algunos
-   estilos de la versión original. Estos cambios se
-   sitúan al final del archivo para garantizar que
-   tengan la mayor prioridad dentro de la cascada.
-*/
-
-/* Elimina el pseudo‑elemento que pinta el fondo en
-   el contenedor .scroll. La imagen de fondo ahora
-   se aplica al elemento html, por lo que este
-   pseudo‑elemento ya no es necesario y causaba
-   duplicación del wallpaper. */
+/* Ocultar el pseudo-elemento que dibujaba el wallpaper en .scroll,
+   ya que ahora el fondo se aplica al elemento html */
 .scroll::before {
   content: none !important;
   background: none !important;
   height: 0 !important;
 }
 
-/* Oculta las barras de desplazamiento en el
-   contenedor .scroll (Firefox y otros navegadores
-   que respetan scrollbar-width) */
+/* Ocultar las barras de desplazamiento manteniendo el scroll funcional */
 .scroll {
-  scrollbar-width: none;
+  scrollbar-width: none; /* Firefox */
 }
-
-/* Oculta las barras de desplazamiento en WebKit
-   (Chrome, Safari) para el contenedor .scroll */
 .scroll::-webkit-scrollbar {
-  display: none;
+  display: none; /* WebKit (Chrome, Safari) */
 }
 
-/* Asegura que el elemento html cubra toda la altura
-   de la pantalla, incluida la safe area inferior y
-   superior. El uso de env() permite adaptarse a
-   dispositivos con notch o barras de sistema. */
-html {
-  min-height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
-}
-}
-
+/* Asegurar que el body no sobrescriba el fondo negro y sea transparente.
+   Se usa !important para tener prioridad sobre estilos embebidos en index.html. */
 body {
+  background: transparent !important;
   margin: 0;
   padding: 0;
-  color: var(--text-color);
-  touch-action: manipulation;
-  position: relative;
-  isolation: isolate;
-  background: transparent;
-  min-height: 100dvh;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
-body::before {
-  content: none;
 }
