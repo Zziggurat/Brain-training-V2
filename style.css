@@ -1153,7 +1153,8 @@ input[type="checkbox"] {
 +   Se utiliza un parámetro de versión (`r=20251103-1530`) para forzar la
 +   recarga del recurso en la PWA y evitar cachés obsoletos. */
 html {
-  width: 100%;
+  html {
+width: 100%;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
