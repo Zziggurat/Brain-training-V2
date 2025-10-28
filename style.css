@@ -1146,19 +1146,16 @@ input[type="checkbox"] {
   border-radius: 24px;
 }
 
-+/* --- Ajustes personalizados para Brain-training V2 --- */
-+
-+/* Aplicar el fondo de pantalla directamente al elemento html,
-+   incluyendo las zonas seguras (safe area) tanto superior como inferior.
-+   Se utiliza un parámetro de versión (`r=20251103-1530`) para forzar la
-+   recarga del recurso en la PWA y evitar cachés obsoletos. */
+/* --- Ajustes personalizados para Brain-training V2 --- */
+
+/* Aplicar el fondo de pantalla directamente al elemento html,
+   incluyendo las zonas seguras (safe area) tanto superior como inferior.
+   Se utiliza un parámetro de versión (`r=20251103-1530`) para forzar la
+   recarga del recurso en la PWA y evitar cachés obsoletos. */
 html {
-  html {
-width: 100%;
-      /* Permitir que el elemento html crezca para abarcar las zonas seguras */
+  width: 100%;
+  /* Permitir que el elemento html crezca para abarcar las zonas seguras */
   height: auto !important;
-
-
   margin: 0;
   padding: 0;
   overflow-x: hidden;
@@ -1179,6 +1176,8 @@ width: 100%;
 
 /* Ocultar las barras de desplazamiento manteniendo el scroll funcional */
 .scroll {
+  padding: 0 !important;
+  background: transparent !important;
   scrollbar-width: none; /* Firefox */
 }
 .scroll::-webkit-scrollbar {
