@@ -1153,6 +1153,9 @@ html {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  /* Usar el mismo fondo que la versión principal para cubrir las safe zones */
+  background: #0b0f1a url("assets/ciudad-cyberpunk.png") no-repeat center center fixed;
+  background-size: cover;
 }
 
 body {
@@ -1162,7 +1165,7 @@ body {
   touch-action: manipulation;
   position: relative;
   isolation: isolate;
-  background: #000;
+  background: transparent;
   min-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
