@@ -1147,58 +1147,58 @@ input[type="checkbox"] {
 }
 
 /* === WALLPAPER (FINAL DEL ARCHIVO) === */
-+html {
-+  width: 100%;
-+  min-height: 100dvh;
-+  margin: 0;
-+  padding: 0;
-+  overflow-x: hidden;
-+  /* Usar el mismo fondo que la versión principal para cubrir las safe zones */
-+  background: #0b0f1a url("assets/ciudad-cyberpunk.png") no-repeat center center fixed;
-+  background-size: cover;
-+}
-+
-+/* ================================================
-+   Ajustes de fondo y scroll para Brain‑training V2
-+   ------------------------------------------------
-+   Para evitar el fondo duplicado y las barras de
-+   desplazamiento visibles, se sobrescriben algunos
-+   estilos de la versión original. Estos cambios se
-+   sitúan al final del archivo para garantizar que
-+   tengan la mayor prioridad dentro de la cascada.
-+*/
-+
-+/* Elimina el pseudo‑elemento que pinta el fondo en
-+   el contenedor .scroll. La imagen de fondo ahora
-+   se aplica al elemento html, por lo que este
-+   pseudo‑elemento ya no es necesario y causaba
-+   duplicación del wallpaper. */
-+.scroll::before {
-+  content: none !important;
-+  background: none !important;
-+  height: 0 !important;
-+}
-+
-+/* Oculta las barras de desplazamiento en el
-+   contenedor .scroll (Firefox y otros navegadores
-+   que respetan scrollbar-width) */
-+.scroll {
-+  scrollbar-width: none;
-+}
-+
-+/* Oculta las barras de desplazamiento en WebKit
-+   (Chrome, Safari) para el contenedor .scroll */
-+.scroll::-webkit-scrollbar {
-+  display: none;
-+}
-+
-+/* Asegura que el elemento html cubra toda la altura
-+   de la pantalla, incluida la safe area inferior y
-+   superior. El uso de env() permite adaptarse a
-+   dispositivos con notch o barras de sistema. */
-+html {
-+  min-height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
-+}
+html {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  /* Usar el mismo fondo que la versión principal para cubrir las safe zones */
+  background: #0b0f1a url("assets/ciudad-cyberpunk.png") no-repeat center center fixed;
+  background-size: cover;
+}
+
+/* ================================================
+   Ajustes de fondo y scroll para Brain‑training V2
+   ------------------------------------------------
+   Para evitar el fondo duplicado y las barras de
+   desplazamiento visibles, se sobrescriben algunos
+   estilos de la versión original. Estos cambios se
+   sitúan al final del archivo para garantizar que
+   tengan la mayor prioridad dentro de la cascada.
+*/
+
+/* Elimina el pseudo‑elemento que pinta el fondo en
+   el contenedor .scroll. La imagen de fondo ahora
+   se aplica al elemento html, por lo que este
+   pseudo‑elemento ya no es necesario y causaba
+   duplicación del wallpaper. */
+.scroll::before {
+  content: none !important;
+  background: none !important;
+  height: 0 !important;
+}
+
+/* Oculta las barras de desplazamiento en el
+   contenedor .scroll (Firefox y otros navegadores
+   que respetan scrollbar-width) */
+.scroll {
+  scrollbar-width: none;
+}
+
+/* Oculta las barras de desplazamiento en WebKit
+   (Chrome, Safari) para el contenedor .scroll */
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Asegura que el elemento html cubra toda la altura
+   de la pantalla, incluida la safe area inferior y
+   superior. El uso de env() permite adaptarse a
+   dispositivos con notch o barras de sistema. */
+html {
+  min-height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+}
 }
 
 body {
