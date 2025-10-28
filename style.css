@@ -1155,6 +1155,10 @@ input[type="checkbox"] {
 html {
   html {
 width: 100%;
+      /* Permitir que el elemento html crezca para abarcar las zonas seguras */
+  height: auto !important;
+
+
   margin: 0;
   padding: 0;
   overflow-x: hidden;
