@@ -1,14 +1,11 @@
-/* custom overrides to adjust padding and scrolling for Brain-training V2 */
+/* Ajustes complementarios para Brain-training V2 */
+html,
+body {
+  height: 100% !important;
+  min-height: 100% !important;
+}
 
 .scroll {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 24px) !important;
-  padding-right: env(safe-area-inset-right, 0px) !important;
-  padding-left: env(safe-area-inset-left, 0px) !important;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px) !important;
-  background: transparent !important;
-  overflow-y: hidden !important;
-  /* keep scrollbars hidden */
-  -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
@@ -16,15 +13,7 @@
   display: none;
 }
 
-/* allow scrolling inside the heatmap container within progress screen */
 #heatmap-container {
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
-}
-
-
-html,
-body {
-  height: 100% !important;
-  min-height: 100% !important;
 }
