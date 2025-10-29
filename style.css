@@ -1196,7 +1196,7 @@ body {
   padding-top: calc(env(safe-area-inset-top, 0px) + 24px) !important;
   padding-right: env(safe-area-inset-right, 0px) !important;
   padding-left: env(safe-area-inset-left, 0px) !important;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px) !important;
+  auto: calc(env(safe-area-inset-bottom, 0px) + 32px) !important;
   background: transparent !important;
   overflow-y: hidden !important;
   -ms-overflow-style: none;
