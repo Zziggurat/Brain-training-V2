@@ -73,8 +73,6 @@
       width: 100%;
       position: relative;
       overflow-x: hidden;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
       box-sizing: border-box;
       padding-top: env(safe-area-inset-top);
@@ -108,9 +106,10 @@
       z-index: -1;
     }
   </style>
-  +  <!-- Actualizamos el parámetro 'r' 20251103-1530 recargar el fondo y la hoja de estilos -->
-+  <link rel="preload" as="image" href="assets/ciudad-cyberpunk.png?r=20251103-1530" />
-+  <link rel="stylesheet" href="style.css?r=20251103-1530" />
+  <!-- Actualizamos el parámetro 'r' 20251103-1600 para recargar los estilos y el fondo -->
+  <link rel="preload" as="image" href="assets/ciudad-cyberpunk.png?r=20251103-1600" />
+  <link rel="stylesheet" href="style.css?r=20251103-1600" />
+  <link rel="stylesheet" href="custom.css?r=20251103-1600" />
   <script defer src="lib/problemWeight.js?r=20241102-1514"></script>
   <script defer src="script.js?r=20241102-1514"></script>
 </head>
