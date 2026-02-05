@@ -870,10 +870,10 @@ document.addEventListener('DOMContentLoaded', () => {
     typeof globalThis !== 'undefined'
       ? globalThis
       : typeof window !== 'undefined'
-      ? window
-      : typeof self !== 'undefined'
-      ? self
-      : null;
+        ? window
+        : typeof self !== 'undefined'
+          ? self
+          : null;
 
   if (fallbackGlobalScope) {
     const existingProblemWeight = fallbackGlobalScope.ProblemWeight;
@@ -892,8 +892,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const { accuracy, attempts, avgTime, streak, errorStreak, lastSeen } = getMasteryStats(key);
     const calculator =
       typeof ProblemWeight !== 'undefined' &&
-      ProblemWeight &&
-      typeof ProblemWeight.calculateProblemWeightFromStats === 'function'
+        ProblemWeight &&
+        typeof ProblemWeight.calculateProblemWeightFromStats === 'function'
         ? ProblemWeight.calculateProblemWeightFromStats
         : calculateProblemWeightFromStatsFallback;
 
@@ -1239,7 +1239,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function buildProblemAction(problem) {
     if (!problem) {
-      return () => {};
+      return () => { };
     }
     if (problem.type === 'multiplication') {
       return () => startSpecificProblemTraining(problem.a, problem.b);
@@ -1430,17 +1430,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!metricsCard) return;
     const acc = dailyStats.totalQuestions > 0 ? Math.round((dailyStats.totalCorrect / dailyStats.totalQuestions) * 100) : 0;
     const avgTime = dailyStats.totalQuestions > 0 ? dailyStats.totalTime / dailyStats.totalQuestions : 0;
+
     metricsCard.innerHTML = '';
+
+    // Título
     const title = document.createElement('h3');
     title.textContent = 'Métricas del día';
     metricsCard.appendChild(title);
+
+    // Contenedor de lista
     const list = document.createElement('div');
     list.style.fontSize = '16px';
     list.style.lineHeight = '1.4';
-    list.innerHTML =
-      `<p>% de acierto del día: ${acc}%</p>` +
-      `<p>Tiempo medio por respuesta: ${avgTime > 0 ? formatDuration(avgTime) : '—'}</p>` +
-      `<p>Racha más larga del día: ${dailyStats.streakMax}</p>`;
+
+    // Párrafo 1: Acierto
+    const p1 = document.createElement('p');
+    p1.textContent = `% de acierto del día: ${acc}%`;
+    list.appendChild(p1);
+
+    // Párrafo 2: Tiempo medio
+    const p2 = document.createElement('p');
+    const timeText = avgTime > 0 ? formatDuration(avgTime) : '—';
+    p2.textContent = `Tiempo medio por respuesta: ${timeText}`;
+    list.appendChild(p2);
+
+    // Párrafo 3: Racha
+    const p3 = document.createElement('p');
+    p3.textContent = `Racha más larga del día: ${dailyStats.streakMax}`;
+    list.appendChild(p3);
+
     metricsCard.appendChild(list);
   }
 
