@@ -2,13 +2,18 @@
   --bg-top: #05070d;
   --bg-bottom: #05070d;
   --bg-solid: #05070d;
-  --card-bg: rgba(9, 14, 25, 0.55);
-  --card-border: rgba(255, 255, 255, 0.12);
-  --glass-highlight: rgba(255, 255, 255, 0.08);
+  /* Glassmorphism Refinado: Más transparente y "frosted" */
+  --card-bg: rgba(9, 14, 25, 0.40);
+  /* Borde sutil, casi invisible pero que atrapa la luz */
+  --card-border: rgba(255, 255, 255, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.15);
   --primary: #2575fc;
   --primary-dark: #0f4cca;
+  --primary-glow: rgba(37, 117, 252, 0.5); /* Nuevo: Glow */
   --success: #2ecc71;
+  --success-glow: rgba(46, 204, 113, 0.5);
   --danger: #e74c3c;
+  --danger-glow: rgba(231, 76, 60, 0.5);
   --text-color: #f4f7ff;
   --muted: #b3bfd6;
   --card-radius: 44px;
@@ -45,7 +50,7 @@ video {
 
 html,
 body {
-  font-family: "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue",
+  font-family: "Outfit", "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
   color: var(--text-color);
   line-height: 1.5;
@@ -170,10 +175,11 @@ button:disabled {
   padding: clamp(32px, 6vw, 72px) clamp(24px, 5vw, 56px)
     clamp(28px, 5vw, 54px);
   border-radius: clamp(28px, 6vw, var(--card-radius));
-  background: rgba(9, 14, 25, 0.45);
+  background: var(--card-bg); /* updated variable */
   border: 1px solid var(--card-border);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 30px 80px rgba(5, 7, 13, 0.45);
+  backdrop-filter: blur(20px) saturate(160%); /* Enhanced vibrancy */
+  box-shadow: 0 30px 80px rgba(5, 7, 13, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1); /* Inner light edge */
   text-align: center;
   position: relative;
   display: flex;
@@ -182,9 +188,11 @@ button:disabled {
 }
 
 #home-title {
-  font-size: clamp(28px, 6vw, 44px);
+  font-family: "Outfit", sans-serif;
+  font-size: clamp(32px, 7vw, 48px);
   margin: 0;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .operation-toggle {
@@ -214,7 +222,7 @@ button:disabled {
   background: linear-gradient(135deg, #5a8dff 0%, #2575fc 100%);
   color: #ffffff;
   border-color: rgba(116, 170, 255, 0.4);
-  box-shadow: 0 16px 40px rgba(37, 117, 252, 0.45);
+  box-shadow: 0 0 24px var(--primary-glow); /* Neon glow */
 }
 
 #progress-wrapper {
@@ -281,8 +289,13 @@ button:disabled {
   font-weight: 700;
   background: var(--primary);
   color: #ffffff;
-  box-shadow: 0 14px 26px rgba(0, 123, 255, 0.25);
-  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  /* Neon Glow Effect */
+  box-shadow: 0 8px 20px var(--primary-glow),
+              0 0 0 1px rgba(255,255,255,0.1) inset;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.2s ease, 
+              background 0.2s ease;
 }
 
 .home-buttons button:active,
@@ -293,17 +306,18 @@ button:disabled {
 #train-restart-btn:active,
 #home-progress-btn:active,
 #start-specific-btn:active {
-  transform: translateY(1px);
-  box-shadow: 0 6px 16px rgba(0, 123, 255, 0.28);
+  transform: scale(0.98) translateY(1px);
+  box-shadow: 0 4px 12px var(--primary-glow);
+  filter: brightness(1.1);
 }
 
 #reset-progress-btn {
   background: var(--danger);
-  box-shadow: 0 12px 22px rgba(231, 76, 60, 0.25);
+  box-shadow: 0 8px 20px var(--danger-glow);
 }
 
 #reset-progress-btn:active {
-  box-shadow: 0 6px 12px rgba(231, 76, 60, 0.35);
+  box-shadow: 0 4px 12px var(--danger-glow);
 }
 
 .home-bottom-row {
@@ -346,12 +360,12 @@ button:disabled {
   width: 100%;
   max-height: min(280px, 40vh);
   padding: clamp(16px, 3vw, 22px);
-  background: rgba(9, 14, 25, 0.55);
-  border: 1px solid var(--glass-highlight);
-  backdrop-filter: blur(14px);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(20px) saturate(160%);
   border-radius: clamp(20px, 4vw, 28px);
   box-shadow: 0 24px 60px rgba(5, 7, 13, 0.45);
-  display: flex;
+  display: flex; /* keep flex */
   flex-direction: column;
   align-items: stretch;
   gap: clamp(10px, 2.6vw, 16px);
@@ -536,8 +550,8 @@ input[type="checkbox"] {
   background: var(--card-bg);
   border-radius: 28px;
   padding: 24px 28px;
-  border: 1px solid var(--glass-highlight);
-  backdrop-filter: blur(18px);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(20px) saturate(160%);
   box-shadow: 0 34px 72px rgba(5, 7, 13, 0.5);
   display: flex;
   align-items: center;
@@ -603,14 +617,14 @@ input[type="checkbox"] {
 
 .answer-option.correct,
 .numeric-display.correct {
-  border-color: rgba(46, 204, 113, 0.65);
-  box-shadow: 0 20px 34px rgba(46, 204, 113, 0.3);
+  border-color: rgba(46, 204, 113, 0.8);
+  box-shadow: 0 0 24px var(--success-glow);
 }
 
 .answer-option.incorrect,
 .numeric-display.incorrect {
-  border-color: rgba(231, 76, 60, 0.65);
-  box-shadow: 0 20px 34px rgba(231, 76, 60, 0.28);
+  border-color: rgba(231, 76, 60, 0.8);
+  box-shadow: 0 0 24px var(--danger-glow);
 }
 
 .numeric-display {
