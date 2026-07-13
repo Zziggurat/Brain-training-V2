@@ -1078,6 +1078,138 @@ input[type="checkbox"] {
   font-size: 14px;
 }
 
+/* --- Análisis del motor adaptativo (pantalla de progreso) --- */
+.analysis-card {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  background: rgba(9, 14, 25, 0.6);
+  border-radius: 24px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--glass-highlight);
+  box-shadow: 0 28px 54px rgba(5, 7, 13, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.analysis-card h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #7db4ff;
+}
+
+.analysis-placeholder {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.analysis-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.analysis-trend p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.analysis-trend p.up {
+  color: #4ade80;
+}
+
+.analysis-trend p.down {
+  color: #ffb47a;
+}
+
+.analysis-section h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.analysis-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.analysis-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(9, 14, 25, 0.75);
+  border: 1px solid var(--glass-highlight);
+  font-size: 14px;
+}
+
+.analysis-chip small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analysis-chip.strength {
+  border-color: rgba(46, 204, 113, 0.55);
+}
+
+.analysis-chip.weak {
+  border-color: rgba(231, 76, 60, 0.55);
+}
+
+.analysis-chip.review {
+  border-color: rgba(255, 179, 71, 0.55);
+}
+
+.analysis-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(3px, 0.8vw, 8px);
+  height: 72px;
+}
+
+.analysis-bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.analysis-bar-fill {
+  width: 100%;
+  border-radius: 6px;
+  transition: height 0.3s ease;
+}
+
+.analysis-bar-fill.good {
+  background: #43d17a;
+}
+
+.analysis-bar-fill.mid {
+  background: #ffb347;
+}
+
+.analysis-bar-fill.low {
+  background: #ff7a6b;
+}
+
+.analysis-bar-fill.empty {
+  background: rgba(244, 247, 255, 0.18);
+}
+
+.analysis-legend {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* --- Tablas --- */
 #tables-screen {
   gap: 28px;

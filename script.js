@@ -852,6 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyAdaptiveScheduling(problem, entry, { correct, skipped, mode });
     }
     saveMastery();
+    recordAdaptiveOutcome(problem, { correct, skipped, timedOut, timeTaken: ms });
     scheduleAssistantPanelRefresh();
   }
 
@@ -900,6 +901,61 @@ document.addEventListener('DOMContentLoaded', () => {
       errorStreak: entry.errorStreak || 0,
       lastSeen: entry.lastSeen || 0,
     };
+  }
+
+  // ----- MOTOR ADAPTATIVO (lib/adaptiveEngine.js) -----
+  // Puente con el motor determinista de habilidades: registra cada intento,
+  // sesga la selección de problemas hacia las habilidades débiles/vencidas
+  // y alimenta el análisis de evolución de la pantalla de progreso.
+  // Si el módulo no está disponible, todos los enganches se desactivan solos.
+  const ADAPTIVE_STORAGE_KEY = 'adaptiveState';
+  let adaptiveState = null;
+
+  function getAdaptiveEngine() {
+    return typeof AdaptiveEngine !== 'undefined' && AdaptiveEngine ? AdaptiveEngine : null;
+  }
+
+  function loadAdaptiveState() {
+    const engine = getAdaptiveEngine();
+    if (!engine) return;
+    let raw = null;
+    try {
+      raw = JSON.parse(localStorage.getItem(ADAPTIVE_STORAGE_KEY) || 'null');
+    } catch (err) {
+      console.error('No se pudo cargar adaptiveState', err);
+    }
+    adaptiveState = engine.normalizeState(raw);
+  }
+
+  function saveAdaptiveState() {
+    if (!adaptiveState) return;
+    try {
+      localStorage.setItem(ADAPTIVE_STORAGE_KEY, JSON.stringify(adaptiveState));
+    } catch (err) {
+      console.error('No se pudo guardar adaptiveState', err);
+    }
+  }
+
+  function recordAdaptiveOutcome(problem, { correct, skipped, timedOut, timeTaken }) {
+    const engine = getAdaptiveEngine();
+    if (!engine) return;
+    if (!adaptiveState) loadAdaptiveState();
+    if (!adaptiveState) return;
+    engine.recordOutcome(adaptiveState, {
+      problem,
+      correct,
+      skipped,
+      timedOut,
+      timeMs: timeTaken,
+      now: Date.now(),
+    });
+    saveAdaptiveState();
+  }
+
+  function adaptiveProblemBias(problem, now) {
+    const engine = getAdaptiveEngine();
+    if (!engine || !adaptiveState) return 1;
+    return engine.problemBias(adaptiveState, problem, { now });
   }
 
   function calculateProblemWeightFromStatsFallback(
@@ -1499,6 +1555,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
+    // Recomendación a nivel de habilidad del motor adaptativo: detecta la
+    // tabla más débil comparada con la mediana del propio usuario.
+    const engine = getAdaptiveEngine();
+    if (engine && adaptiveState) {
+      const analysis = engine.analyze(adaptiveState, { now });
+      const wantedGroup = operation === 'multiplication' ? 'multiplicación' : 'división';
+      const weak = analysis.weaknesses.find(
+        (s) => s.meta && s.meta.table && s.meta.group === wantedGroup && s.meta.table >= min && s.meta.table <= max
+      );
+      if (weak) {
+        pushRec({
+          id: `skill_${weak.id}`,
+          title: `Refuerza ${weak.label.toLowerCase()}`,
+          reason: `Por debajo de tu media: ${Math.round(weak.accEff * 100)}% de acierto reciente`,
+          action: () => startSpecificRowTraining(weak.meta.table),
+        });
+      }
+    }
+
     const rowCandidates = Array.from(rowStats.values()).filter((row) => row.low > 0);
     rowCandidates.sort((a, b) => b.low - a.low);
     if (rowCandidates.length > 0) {
@@ -1625,6 +1700,152 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Mostrar la pantalla de progreso, construyendo el mapa de calor y métricas.
    */
+  /**
+   * Renderizar la tarjeta "Análisis de tu evolución" con los datos del
+   * motor adaptativo: tendencia semanal, fortalezas, puntos a reforzar,
+   * repasos de habilidad pendientes e historial de los últimos 14 días.
+   */
+  function renderPerformanceAnalysis() {
+    const container = document.getElementById('analysis-card');
+    if (!container) return;
+    container.innerHTML = '';
+    const title = document.createElement('h3');
+    title.textContent = 'Análisis de tu evolución';
+    container.appendChild(title);
+    const engine = getAdaptiveEngine();
+    if (engine && !adaptiveState) loadAdaptiveState();
+    const analysis = engine && adaptiveState ? engine.analyze(adaptiveState, { now: Date.now() }) : null;
+    if (!analysis || analysis.totalSkills === 0) {
+      const placeholder = document.createElement('p');
+      placeholder.className = 'analysis-placeholder';
+      placeholder.textContent =
+        'Completa algunas sesiones de práctica y aquí verás tus fortalezas, tus puntos débiles y tu evolución semana a semana.';
+      container.appendChild(placeholder);
+      return;
+    }
+    renderTrendSummary(container, analysis.trend);
+    renderSkillChips(container, '💪 Fortalezas', analysis.strengths, 'strength', (s) => `${Math.round(s.accEff * 100)}% de acierto`);
+    renderSkillChips(container, '🎯 A reforzar', analysis.weaknesses, 'weak', (s) => `${Math.round(s.accEff * 100)}% de acierto`);
+    renderSkillChips(container, '⏰ Toca repasar', analysis.review, 'review', () => 'repaso vencido');
+    renderHistoryBars(container, analysis.recentDays);
+  }
+
+  /** Resumen de tendencia: última semana frente a la anterior. */
+  function renderTrendSummary(container, trend) {
+    const wrap = document.createElement('div');
+    wrap.className = 'analysis-trend';
+    const lines = [];
+    if (trend.currAccuracy !== null) {
+      let text = `Precisión de los últimos 7 días: ${Math.round(trend.currAccuracy * 100)}%`;
+      let cls = '';
+      if (trend.accuracyDelta !== null) {
+        const pts = Math.round(trend.accuracyDelta * 100);
+        if (pts >= 2) {
+          text += ` (▲ +${pts} pts frente a la semana anterior)`;
+          cls = 'up';
+        } else if (pts <= -2) {
+          text += ` (▼ ${pts} pts frente a la semana anterior)`;
+          cls = 'down';
+        } else {
+          text += ' (estable frente a la semana anterior)';
+        }
+      }
+      lines.push({ text, cls });
+    }
+    if (trend.currAvgTime !== null) {
+      let text = `Tiempo medio por respuesta: ${(trend.currAvgTime / 1000).toFixed(1)} s`;
+      let cls = '';
+      if (trend.timeDelta !== null) {
+        const secs = trend.timeDelta / 1000;
+        if (secs <= -0.3) {
+          text += ` (▲ ${Math.abs(secs).toFixed(1)} s más rápido que la semana anterior)`;
+          cls = 'up';
+        } else if (secs >= 0.3) {
+          text += ` (▼ ${secs.toFixed(1)} s más lento que la semana anterior)`;
+          cls = 'down';
+        }
+      }
+      lines.push({ text, cls });
+    }
+    if (trend.currVolume > 0 || trend.prevVolume > 0) {
+      lines.push({ text: `Ejercicios: ${trend.currVolume} esta semana · ${trend.prevVolume} la anterior`, cls: '' });
+    }
+    if (!lines.length) {
+      lines.push({ text: 'Practica varios días para ver tu tendencia semanal.', cls: '' });
+    }
+    lines.forEach(({ text, cls }) => {
+      const p = document.createElement('p');
+      if (cls) p.classList.add(cls);
+      p.textContent = text;
+      wrap.appendChild(p);
+    });
+    container.appendChild(wrap);
+  }
+
+  /** Grupo de fichas de habilidades (fortalezas, refuerzos o repasos). */
+  function renderSkillChips(container, heading, skills, kind, detailFor) {
+    if (!skills || !skills.length) return;
+    const section = document.createElement('div');
+    section.className = 'analysis-section';
+    const h4 = document.createElement('h4');
+    h4.textContent = heading;
+    section.appendChild(h4);
+    const list = document.createElement('div');
+    list.className = 'analysis-chips';
+    skills.forEach((skill) => {
+      const chip = document.createElement('span');
+      chip.className = `analysis-chip ${kind}`;
+      const name = document.createElement('strong');
+      name.textContent = skill.label;
+      chip.appendChild(name);
+      const detail = document.createElement('small');
+      detail.textContent = detailFor(skill);
+      chip.appendChild(detail);
+      list.appendChild(chip);
+    });
+    section.appendChild(list);
+    container.appendChild(section);
+  }
+
+  /** Mini gráfico de barras CSS con la actividad de los últimos 14 días. */
+  function renderHistoryBars(container, days) {
+    if (!days || !days.length) return;
+    const section = document.createElement('div');
+    section.className = 'analysis-section';
+    const h4 = document.createElement('h4');
+    h4.textContent = '📅 Últimos 14 días';
+    section.appendChild(h4);
+    const bars = document.createElement('div');
+    bars.className = 'analysis-bars';
+    const maxQ = Math.max(1, ...days.map((d) => d.q));
+    days.forEach((d) => {
+      const bar = document.createElement('div');
+      bar.className = 'analysis-bar';
+      const fill = document.createElement('div');
+      fill.className = 'analysis-bar-fill';
+      fill.style.height = d.q > 0 ? `${Math.max(10, Math.round((d.q / maxQ) * 100))}%` : '4%';
+      if (d.q === 0) {
+        fill.classList.add('empty');
+      } else {
+        const acc = d.ok / d.q;
+        fill.classList.add(acc >= 0.85 ? 'good' : acc >= 0.6 ? 'mid' : 'low');
+      }
+      const [, month, dayNum] = d.day.split('-');
+      bar.title =
+        d.q > 0
+          ? `${dayNum}/${month}: ${d.q} ejercicios, ${Math.round((d.ok / d.q) * 100)}% de acierto`
+          : `${dayNum}/${month}: sin actividad`;
+      bar.appendChild(fill);
+      bars.appendChild(bar);
+    });
+    section.appendChild(bars);
+    const legend = document.createElement('p');
+    legend.className = 'analysis-legend';
+    legend.textContent = 'Altura = volumen de práctica · Color = precisión del día';
+    section.appendChild(legend);
+    container.appendChild(section);
+  }
+
   function showProgressScreen() {
     // Asegurarnos de que la configuración esté cargada antes de generar el mapa de calor
     try {
@@ -1638,6 +1859,7 @@ document.addEventListener('DOMContentLoaded', () => {
       buildHeatmap();
       renderDailyMetrics();
       renderDailyGoal();
+      renderPerformanceAnalysis();
     } catch (e) {
       // En caso de error (por ejemplo, combinación inválida), imprimimos en la consola
       console.error('Error al construir la pantalla de progreso', e);
@@ -2025,7 +2247,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let weighted = [];
     const now = Date.now();
     for (const prob of base) {
-      const weight = calculateProblemWeight(prob, { now });
+      // El peso base (estrellas + repaso) se modula con el sesgo del motor
+      // adaptativo: habilidades débiles o vencidas pesan más, dominadas menos.
+      const baseWeight = calculateProblemWeight(prob, { now });
+      const weight = baseWeight > 0 ? Math.max(1, Math.round(baseWeight * adaptiveProblemBias(prob, now))) : 0;
       for (let w = 0; w < weight; w++) {
         weighted.push(prob);
       }
@@ -2134,7 +2359,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let weightedSel = [];
     const now = Date.now();
     for (const prob of selected) {
-      const weight = calculateProblemWeight(prob, { now });
+      const baseWeight = calculateProblemWeight(prob, { now });
+      const weight = baseWeight > 0 ? Math.max(1, Math.round(baseWeight * adaptiveProblemBias(prob, now))) : 0;
       for (let w = 0; w < weight; w++) {
         weightedSel.push(prob);
       }
@@ -3386,6 +3612,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadErrors();
     // Cargar estadísticas diarias
     loadDailyStats();
+    // Cargar el estado del motor adaptativo
+    loadAdaptiveState();
     updateProgressBar();
     // Navegación desde la pantalla de inicio
     homeSettingsBtn.addEventListener('click', () => {
