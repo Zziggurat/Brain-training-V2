@@ -2004,6 +2004,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return isSpecificTrainingActive() ? 'specific' : 'training';
   }
 
+  /**
+   * Comprobar si un valor responde al problema. Los ejercicios de
+   * estimación declaran `tolerance`: cualquier valor dentro del margen
+   * cuenta como acierto (los problemas exactos usan tolerancia 0).
+   */
+  function isAnswerAcceptable(problem, value) {
+    if (!problem || !Number.isFinite(value)) return false;
+    const tolerance = Number.isFinite(problem.tolerance) ? problem.tolerance : 0;
+    return Math.abs(value - problem.answer) <= tolerance;
+  }
+
   function scheduleNextTrainingQuestion(delay = 800) {
     const advance = () => {
       if (!isScreenActive('training')) {
@@ -3389,7 +3400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = Date.now();
     const timeTaken = now - trainQuestionStartTime;
     const value = parseInt(trainTypedAnswer, 10);
-    const isCorrect = value === correct;
+    const isCorrect = isAnswerAcceptable(currentProblem, value);
     recordProblemAttempt(currentProblem, {
       correct: isCorrect,
       timeTaken,
@@ -3402,13 +3413,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const isSpecificContext = trainingSessionContext === TRAINING_CONTEXT.SPECIFIC;
 
     if (isCorrect) {
-      // Correcto: sumar puntaje y continuar
+      // Correcto: sumar puntaje y continuar. En estimaciones aceptadas
+      // dentro del margen se muestra además el valor exacto.
       trainCorrectCount++;
       stats.totalCorrect++;
       display.classList.add('correct');
-      setFeedback(trainFeedbackDiv, '¡Correcto!', 'success');
+      const approxNote =
+        currentProblem && currentProblem.tolerance > 0 && value !== currentProblem.answer
+          ? ` Exacto: ${currentProblem.answer}.`
+          : '';
+      setFeedback(trainFeedbackDiv, `¡Correcto!${approxNote}`, 'success');
       saveStats();
-      scheduleNextTrainingQuestion(500);
+      scheduleNextTrainingQuestion(approxNote ? 900 : 500);
     } else {
       trainingHasMistake = true;
       const correctText = String(correct);

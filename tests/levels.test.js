@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 
 const Levels = require('../lib/levels');
 
-test('define los 12 niveles con metadatos y 5 jugables', () => {
+test('define los 12 niveles con metadatos y 7 jugables', () => {
   assert.equal(Levels.LEVELS.length, 12);
   const playable = Levels.LEVELS.filter((l) => Array.isArray(l.techniques) && l.techniques.length > 0);
-  assert.equal(playable.length, 5);
+  assert.equal(playable.length, 7);
   Levels.LEVELS.forEach((l) => {
     assert.ok(l.id >= 1 && l.id <= 12);
     assert.ok(l.title.length > 0 && l.tagline.length > 0);
@@ -22,10 +22,10 @@ test('los generadores son deterministas con la misma semilla', () => {
 });
 
 test('todos los problemas generados están bien formados', () => {
-  for (const level of [1, 2, 3, 4, 5]) {
+  for (const level of [1, 2, 3, 4, 5, 6, 7]) {
     const rng = Levels.createRng(7 + level);
     const problems = Levels.generateBoss(level, rng);
-    assert.ok(problems.length >= 16, `nivel ${level} genera su tanda completa`);
+    assert.ok(problems.length >= 15, `nivel ${level} genera su tanda completa`);
     problems.forEach((p) => {
       assert.equal(p.type, 'custom');
       assert.ok(p.prompt.includes('?'), `enunciado con hueco: ${p.prompt}`);
@@ -132,8 +132,48 @@ test('la división del nivel 5 es exacta y los restos correctos', () => {
   });
 });
 
+test('la estimación declara tolerancia coherente y el nivel 7 es correcto', () => {
+  const est = Levels.generateBoss(6, Levels.createRng(66));
+  est.forEach((p) => {
+    const prod = p.prompt.match(/^(\d+) × (\d+) ≈ \?$/);
+    const pct = p.prompt.match(/^(\d+)% de (\d+) ≈ \?$/);
+    const rem9 = p.prompt.match(/^Resto de \((\d+) × (\d+)\) ÷ 9 = \?$/);
+    if (prod) {
+      const exact = Number(prod[1]) * Number(prod[2]);
+      assert.equal(p.answer, exact);
+      assert.ok(p.tolerance >= Math.round(exact * 0.04), `margen ~5%: ${p.prompt}`);
+    } else if (pct) {
+      const exact = (Number(pct[1]) * Number(pct[2])) / 100;
+      assert.equal(p.answer, Math.round(exact));
+      assert.ok(p.tolerance >= 3);
+    } else if (rem9) {
+      assert.equal(p.answer, (Number(rem9[1]) * Number(rem9[2])) % 9);
+      assert.ok(!p.tolerance, 'la comprobación por 9 es exacta');
+    } else {
+      assert.fail('formato inesperado: ' + p.prompt);
+    }
+  });
+
+  const sq = Levels.generateBoss(7, Levels.createRng(77));
+  sq.forEach((p) => {
+    const square = p.prompt.match(/^(\d+)² = \?$/);
+    const root = p.prompt.match(/^√(\d+) ≈ \?$/);
+    if (square) {
+      const n = Number(square[1]);
+      assert.ok(n >= 31 && n <= 50);
+      assert.equal(p.answer, n * n);
+    } else if (root) {
+      const n = Number(root[1]);
+      assert.equal(p.answer, Math.round(Math.sqrt(n)));
+      assert.equal(p.tolerance, 1);
+    } else {
+      assert.fail('formato inesperado: ' + p.prompt);
+    }
+  });
+});
+
 test('SKILL_META cubre todas las habilidades que emiten los generadores', () => {
-  for (const level of [1, 2, 3, 4, 5]) {
+  for (const level of [1, 2, 3, 4, 5, 6, 7]) {
     const problems = Levels.generateBoss(level, Levels.createRng(100 + level));
     problems.forEach((p) => {
       p.skills.forEach((skill) => {

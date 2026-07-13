@@ -9,7 +9,7 @@
  * URLs never matched the versioned requests and the app did not work offline.
  */
 
-const CACHE_NAME = 'brain-training-v2104';
+const CACHE_NAME = 'brain-training-v2105';
 const FONT_CACHE_NAME = 'brain-training-fonts-v1';
 
 // Relative paths: the app must also work when hosted in a sub-directory
