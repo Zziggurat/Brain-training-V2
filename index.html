@@ -35,11 +35,12 @@
       background: #05070d;
     }
   </style>
-  <link rel="stylesheet" href="style.css?r=20260713-1" />
-  <link rel="stylesheet" href="custom.css?r=20260713-1" />
-  <script defer src="lib/problemWeight.js?r=20260713-1"></script>
-  <script defer src="lib/adaptiveEngine.js?r=20260713-1"></script>
-  <script defer src="script.js?r=20260713-1"></script>
+  <link rel="stylesheet" href="style.css?r=20260713-2" />
+  <link rel="stylesheet" href="custom.css?r=20260713-2" />
+  <script defer src="lib/problemWeight.js?r=20260713-2"></script>
+  <script defer src="lib/adaptiveEngine.js?r=20260713-2"></script>
+  <script defer src="lib/levels.js?r=20260713-2"></script>
+  <script defer src="script.js?r=20260713-2"></script>
 </head>
 
 <body>
@@ -81,6 +82,7 @@
             <div class="home-buttons">
               <button id="home-learn-btn">Aprendizaje</button>
               <button id="home-train-btn">Entrenamiento</button>
+              <button id="home-levels-btn">Niveles</button>
               <button id="home-errors-btn">Errores de hoy <span id="errors-badge" class="errors-badge hidden"
                   aria-hidden="true"></span></button>
               <button id="home-tables-btn">Tablas</button>
@@ -190,6 +192,15 @@
         <div id="train-score" class="score" role="status"></div>
         <button id="train-skip-btn">Mostrar respuesta</button>
         <button id="train-restart-btn" class="hidden">Reintentar</button>
+      </div>
+
+      <!-- Pantalla de niveles de cálculo mental -->
+      <div id="levels-screen" class="screen">
+        <div class="top-bar">
+          <button class="back-home-btn" id="levels-back-btn" aria-label="Volver al inicio">←</button>
+          <h2>Niveles</h2>
+        </div>
+        <div id="levels-map" class="levels-map"></div>
       </div>
 
       <!-- Pantalla de tablas -->

@@ -9,7 +9,7 @@
  * URLs never matched the versioned requests and the app did not work offline.
  */
 
-const CACHE_NAME = 'brain-training-v2102';
+const CACHE_NAME = 'brain-training-v2103';
 const FONT_CACHE_NAME = 'brain-training-fonts-v1';
 
 // Relative paths: the app must also work when hosted in a sub-directory
@@ -22,6 +22,7 @@ const PRECACHE_ASSETS = [
   'script.js',
   'lib/problemWeight.js',
   'lib/adaptiveEngine.js',
+  'lib/levels.js',
   // Styles
   'style.css',
   'custom.css',

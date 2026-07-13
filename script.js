@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     training: document.getElementById('training-screen'),
     tables: document.getElementById('tables-screen'),
     progress: document.getElementById('progress-screen'),
+    levels: document.getElementById('levels-screen'),
   };
 
   // Botones en la pantalla de inicio
@@ -85,9 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const TRAINING_CONTEXT = Object.freeze({
     GENERAL: 'general',
     SPECIFIC: 'specific',
+    LEVEL: 'level',
   });
   let trainingSessionContext = TRAINING_CONTEXT.GENERAL;
   let trainingHasMistake = false;
+  // Sesión de nivel en curso (práctica de técnica o jefe de nivel)
+  let levelSession = null;
 
   // Elementos de la pantalla de progreso
   const progressBackBtn = document.getElementById('progress-back-btn');
@@ -612,6 +616,11 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {Object} problem
    */
   function createProblemKey(problem) {
+    if (problem.key) {
+      // Problemas de niveles: clave agrupada por técnica y tramo, para que
+      // la maestría y el repaso no crezcan con cada instancia aleatoria.
+      return problem.key;
+    }
     if (problem.type === 'multiplication') {
       const x = Math.min(problem.a, problem.b);
       const y = Math.max(problem.a, problem.b);
@@ -853,6 +862,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     saveMastery();
     recordAdaptiveOutcome(problem, { correct, skipped, timedOut, timeTaken: ms });
+    // Capturar el resultado para la evaluación de la sesión de nivel en curso
+    if (mode === 'level' && levelSession) {
+      levelSession.results.push({ correct: !!correct && !skipped && !timedOut, timeMs: ms });
+    }
     scheduleAssistantPanelRefresh();
   }
 
@@ -1082,7 +1095,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const baseInterval = spacedIntervals[0] || 10 * 60 * 1000;
       const penalty = Math.max(60 * 1000, Math.floor(baseInterval / 2));
       dueTimes[key] = now + penalty;
-      if (mode !== 'learning') {
+      // Solo las combinaciones de tablas entran en "Errores de hoy" (los
+      // ejercicios de nivel usan claves c_* que esa sesión no puede recrear).
+      if (mode !== 'learning' && parseProblemKey(key)) {
         const today = getTodayDate();
         if (!errorsToday[today]) {
           errorsToday[today] = [];
@@ -1981,6 +1996,12 @@ document.addEventListener('DOMContentLoaded', () => {
     trainingSessionContext = context;
     trainingHasMistake = false;
     applyTrainingSkipPolicy();
+  }
+
+  /** Modo con el que se registran los intentos de la sesión actual. */
+  function currentTrainingMode() {
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) return 'level';
+    return isSpecificTrainingActive() ? 'specific' : 'training';
   }
 
   function scheduleNextTrainingQuestion(delay = 800) {
@@ -2919,7 +2940,206 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Iniciar sesión de entrenamiento.
    */
+  // ----- NIVELES DE CÁLCULO MENTAL (lib/levels.js) -----
+  const LEVEL_PROGRESS_KEY = 'levelProgress';
+  let levelProgress = {};
+
+  function getLevelsModule() {
+    return typeof Levels !== 'undefined' && Levels ? Levels : null;
+  }
+
+  function loadLevelProgress() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LEVEL_PROGRESS_KEY) || 'null');
+      levelProgress = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (err) {
+      console.error('No se pudo cargar levelProgress', err);
+      levelProgress = {};
+    }
+  }
+
+  function saveLevelProgress() {
+    try {
+      localStorage.setItem(LEVEL_PROGRESS_KEY, JSON.stringify(levelProgress));
+    } catch (err) {
+      console.error('No se pudo guardar levelProgress', err);
+    }
+  }
+
+  const MEDAL_LABELS = { bronze: '🥉 Bronce', silver: '🥈 Plata', gold: '🥇 Oro' };
+
+  /** Iniciar práctica de técnica o jefe de nivel reutilizando el entrenamiento. */
+  function startLevelSession(levelId, kind, techniqueId = null) {
+    const LevelsMod = getLevelsModule();
+    if (!LevelsMod) return;
+    const problems =
+      kind === 'boss' ? LevelsMod.generateBoss(levelId) : LevelsMod.generatePractice(levelId, techniqueId, 10);
+    if (!problems.length) return;
+    currentSpecificSelection = null;
+    levelSession = { levelId, kind, techniqueId, results: [] };
+    configureTrainingSession(TRAINING_CONTEXT.LEVEL);
+    trainProblems = problems;
+    trainIndex = 0;
+    trainCorrectCount = 0;
+    trainTypedAnswer = '';
+    trainScoreDiv.textContent = '';
+    trainRestartBtn.classList.add('hidden');
+    showScreen('training');
+    renderTrainingProblem();
+  }
+
+  /** Cerrar la sesión de nivel: resumen y, en el jefe, medalla y registro. */
+  function finishLevelSession() {
+    const LevelsMod = getLevelsModule();
+    const session = levelSession;
+    if (!LevelsMod || !session) return;
+    const level = LevelsMod.getLevel(session.levelId);
+    const summary = LevelsMod.evaluateBoss(session.results, level && level.criteria ? level.criteria : undefined);
+    const accPct = Math.round(summary.accuracy * 100);
+    const avgTxt = summary.avgMs > 0 ? ` · ${(summary.avgMs / 1000).toFixed(1)} s por ítem` : '';
+    trainScoreDiv.textContent = `Aciertos: ${summary.correct} de ${summary.total} (${accPct}%${avgTxt})`;
+    if (session.kind === 'boss') {
+      const prev = levelProgress[session.levelId] || {};
+      if (summary.medal) {
+        levelProgress[session.levelId] = {
+          medal: LevelsMod.betterMedal(summary.medal, prev.medal || null),
+          bestAcc: Math.max(prev.bestAcc || 0, summary.accuracy),
+          bestAvgMs: prev.bestAvgMs > 0 && prev.bestAvgMs < summary.avgMs ? prev.bestAvgMs : summary.avgMs,
+          attempts: (prev.attempts || 0) + 1,
+          lastPlayed: Date.now(),
+        };
+        saveLevelProgress();
+        setFeedback(trainFeedbackDiv, `${MEDAL_LABELS[summary.medal]}: jefe del nivel ${session.levelId} superado.`, 'success');
+        showToast(`${MEDAL_LABELS[summary.medal]} — Nivel ${session.levelId}: ${level.title}`, 'success');
+      } else {
+        levelProgress[session.levelId] = Object.assign({}, prev, {
+          attempts: (prev.attempts || 0) + 1,
+          lastPlayed: Date.now(),
+        });
+        saveLevelProgress();
+        setFeedback(
+          trainFeedbackDiv,
+          'Sin medalla esta vez: necesitas al menos un 80% de acierto. Repasa las técnicas y reinténtalo.',
+          'error'
+        );
+      }
+    } else {
+      setFeedback(
+        trainFeedbackDiv,
+        accPct >= 90 ? '¡Técnica dominada! Atrévete con el jefe de nivel.' : 'Buen entrenamiento: repite la técnica hasta rozar el 100%.',
+        accPct >= 90 ? 'success' : 'neutral'
+      );
+    }
+    trainRestartBtn.classList.remove('hidden');
+  }
+
+  /** Construir el mapa de niveles. */
+  function renderLevelsMap() {
+    const container = document.getElementById('levels-map');
+    const LevelsMod = getLevelsModule();
+    if (!container || !LevelsMod) return;
+    container.innerHTML = '';
+    LevelsMod.LEVELS.forEach((level) => {
+      const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
+      const playable = Array.isArray(level.techniques) && level.techniques.length > 0;
+      const progress = levelProgress[level.id] || null;
+
+      const card = document.createElement('div');
+      card.className = 'level-card';
+      if (!unlocked) card.classList.add('locked');
+
+      const head = document.createElement('div');
+      head.className = 'level-head';
+      const badge = document.createElement('span');
+      badge.className = 'level-num';
+      badge.textContent = unlocked ? level.emoji : '🔒';
+      head.appendChild(badge);
+      const titles = document.createElement('div');
+      titles.className = 'level-titles';
+      const h3 = document.createElement('h3');
+      h3.textContent = `Nivel ${level.id} · ${level.title}`;
+      const tagline = document.createElement('p');
+      tagline.textContent = level.tagline;
+      titles.appendChild(h3);
+      titles.appendChild(tagline);
+      head.appendChild(titles);
+      const medal = document.createElement('span');
+      medal.className = 'level-medal';
+      medal.textContent = progress && progress.medal ? MEDAL_LABELS[progress.medal].split(' ')[0] : '';
+      head.appendChild(medal);
+      card.appendChild(head);
+
+      if (!unlocked) {
+        const note = document.createElement('p');
+        note.className = 'level-note';
+        note.textContent = 'Consigue una medalla en el nivel anterior para desbloquearlo.';
+        card.appendChild(note);
+      } else if (!playable) {
+        const note = document.createElement('p');
+        note.className = 'level-note';
+        note.textContent = '🚧 En construcción: llegará en una próxima actualización.';
+        card.appendChild(note);
+      } else {
+        const list = document.createElement('div');
+        list.className = 'level-techniques';
+        level.techniques.forEach((tech) => {
+          const row = document.createElement('div');
+          row.className = 'level-tech-row';
+          const info = document.createElement('button');
+          info.className = 'level-tech-info';
+          info.type = 'button';
+          info.textContent = `📖 ${tech.name}`;
+          info.setAttribute('aria-label', `Ver explicación de ${tech.name}`);
+          info.addEventListener('click', () => {
+            openModal(tech.name, tech.steps);
+          });
+          const practice = document.createElement('button');
+          practice.className = 'level-tech-practice';
+          practice.type = 'button';
+          practice.textContent = 'Practicar';
+          practice.addEventListener('click', () => {
+            startLevelSession(level.id, 'practice', tech.id);
+          });
+          row.appendChild(info);
+          row.appendChild(practice);
+          list.appendChild(row);
+        });
+        card.appendChild(list);
+
+        const bossBtn = document.createElement('button');
+        bossBtn.className = 'level-boss-btn';
+        bossBtn.type = 'button';
+        bossBtn.textContent = `⚔️ Jefe de nivel (${level.bossCount} ejercicios)`;
+        bossBtn.addEventListener('click', () => {
+          startLevelSession(level.id, 'boss');
+        });
+        card.appendChild(bossBtn);
+
+        const criteria = document.createElement('p');
+        criteria.className = 'level-criteria';
+        const c = level.criteria;
+        criteria.textContent = `🥇 ${Math.round(c.gold.acc * 100)}% y ≤${(c.gold.avgMs / 1000).toFixed(1)} s · 🥈 ${Math.round(c.silver.acc * 100)}% y ≤${(c.silver.avgMs / 1000).toFixed(1)} s · 🥉 ${Math.round(c.bronze.acc * 100)}%`;
+        card.appendChild(criteria);
+
+        if (progress && progress.bestAcc) {
+          const best = document.createElement('p');
+          best.className = 'level-note';
+          const bestAvg = progress.bestAvgMs > 0 ? ` · mejor ritmo ${(progress.bestAvgMs / 1000).toFixed(1)} s` : '';
+          best.textContent = `Mejor marca: ${Math.round(progress.bestAcc * 100)}%${bestAvg}`;
+          card.appendChild(best);
+        }
+      }
+      container.appendChild(card);
+    });
+  }
+
+  function showLevelsScreen() {
+    renderLevelsMap();
+    showScreen('levels');
+  }
+
   function startTrainingSession() {
+    levelSession = null;
     configureTrainingSession(TRAINING_CONTEXT.GENERAL);
     trainProblems = generateProblems();
     trainIndex = 0;
@@ -2937,10 +3157,14 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderTrainingProblem() {
     const problem = trainProblems[trainIndex];
-    const { multipleChoice } = getActiveModeConfig();
+    // Los problemas de nivel traen su propio enunciado y se responden
+    // siempre con el teclado numérico (mide pensamiento, no suerte).
+    const multipleChoice = getActiveModeConfig().multipleChoice && !problem.prompt;
     // Mostrar progreso basado en la longitud actual de la lista de problemas
     trainProgressSpan.textContent = `${trainIndex + 1}/${trainProblems.length}`;
-    if (problem.type === 'multiplication') {
+    if (problem.prompt) {
+      trainProblemDiv.textContent = problem.prompt;
+    } else if (problem.type === 'multiplication') {
       trainProblemDiv.textContent = `${problem.a} × ${problem.b} = ?`;
     } else {
       trainProblemDiv.textContent = `${problem.dividend} ÷ ${problem.divisor} = ?`;
@@ -2950,6 +3174,10 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTrainingSkipPolicy();
 
     setFeedback(trainFeedbackDiv, '');
+    // En la práctica de técnica se muestra la pista pedagógica del ejercicio
+    if (levelSession && levelSession.kind === 'practice' && problem.hint) {
+      setFeedback(trainFeedbackDiv, `💡 ${problem.hint}`);
+    }
     trainAnswerArea.innerHTML = '';
     trainTypedAnswer = '';
 
@@ -3078,7 +3306,7 @@ document.addEventListener('DOMContentLoaded', () => {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: isSpecificTrainingActive() ? 'specific' : 'training',
+      mode: currentTrainingMode(),
       source: 'multiple-choice',
     });
     // Alimentar las métricas diarias también desde el entrenamiento
@@ -3097,7 +3325,17 @@ document.addEventListener('DOMContentLoaded', () => {
       scheduleNextTrainingQuestion(500);
     } else {
       trainingHasMistake = true;
-      if (isSpecificContext) {
+      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+        // En niveles el fallo no termina la sesión: se muestra la solución
+        // y se avanza (la medalla se juega con la precisión del conjunto).
+        buttons.forEach((b) => {
+          const val = parseInt(b.textContent, 10);
+          b.classList.add(val === correct ? 'correct' : 'incorrect');
+        });
+        setFeedback(trainFeedbackDiv, `La respuesta era ${correct}.`, 'error');
+        saveStats();
+        scheduleNextTrainingQuestion(1200);
+      } else if (isSpecificContext) {
         btn.classList.add('incorrect');
         setFeedback(
           trainFeedbackDiv,
@@ -3156,7 +3394,7 @@ document.addEventListener('DOMContentLoaded', () => {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: isSpecificTrainingActive() ? 'specific' : 'training',
+      mode: currentTrainingMode(),
       source: 'written',
     });
     // Alimentar las métricas diarias también desde el entrenamiento
@@ -3175,7 +3413,12 @@ document.addEventListener('DOMContentLoaded', () => {
       trainingHasMistake = true;
       const correctText = String(correct);
       display.classList.add('incorrect');
-      if (isSpecificContext) {
+      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+        display.textContent = correctText;
+        setFeedback(trainFeedbackDiv, `La respuesta era ${correctText}.`, 'error');
+        saveStats();
+        scheduleNextTrainingQuestion(1200);
+      } else if (isSpecificContext) {
         setFeedback(
           trainFeedbackDiv,
           'Respuesta incorrecta. Intenta nuevamente o usa "Mostrar respuesta".',
@@ -3208,6 +3451,10 @@ document.addEventListener('DOMContentLoaded', () => {
       trainTimer = null;
     }
     hideTrainSkipButton();
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL && levelSession) {
+      finishLevelSession();
+      return;
+    }
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     setFeedback(trainFeedbackDiv, '¡Sesión completada!', 'success');
     trainRestartBtn.classList.remove('hidden');
@@ -3240,6 +3487,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
       trainTimer = null;
+    }
+    // En sesiones de nivel, agotar el tiempo cuenta como fallo del ítem
+    // pero la sesión continúa con el siguiente ejercicio.
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+      const levelProblem = trainProblems[trainIndex];
+      if (levelProblem && reason === 'time') {
+        const timeTaken = Date.now() - trainQuestionStartTime;
+        recordProblemAttempt(levelProblem, {
+          correct: false,
+          timeTaken,
+          skipped: false,
+          mode: 'level',
+          source: 'timeout',
+          timedOut: true,
+        });
+        updateDailyStats(false, timeTaken);
+        const display = trainAnswerArea.querySelector('#train-display');
+        if (display) display.textContent = String(levelProblem.answer);
+        setFeedback(trainFeedbackDiv, `¡Tiempo agotado! La respuesta era ${levelProblem.answer}.`, 'error');
+      }
+      trainAnswerArea.querySelectorAll('button').forEach((btn) => {
+        btn.disabled = true;
+      });
+      scheduleNextTrainingQuestion(1200);
+      return;
     }
     disableTrainSkipButton();
     applyTrainingSkipPolicy();
@@ -3318,6 +3590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isSpecificTrainingActive()) {
       return;
     }
+    levelSession = null;
     configureTrainingSession(TRAINING_CONTEXT.SPECIFIC);
     trainProblems = generateSpecificProblems(currentSpecificSelection);
     trainIndex = 0;
@@ -3614,6 +3887,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDailyStats();
     // Cargar el estado del motor adaptativo
     loadAdaptiveState();
+    // Cargar el progreso de niveles
+    loadLevelProgress();
     updateProgressBar();
     // Navegación desde la pantalla de inicio
     homeSettingsBtn.addEventListener('click', () => {
@@ -3634,6 +3909,19 @@ document.addEventListener('DOMContentLoaded', () => {
     homeTablesBtn.addEventListener('click', () => {
       showTablesScreen();
     });
+    // Pantalla de niveles de cálculo mental
+    const homeLevelsBtn = document.getElementById('home-levels-btn');
+    if (homeLevelsBtn) {
+      homeLevelsBtn.addEventListener('click', () => {
+        showLevelsScreen();
+      });
+    }
+    const levelsBackBtn = document.getElementById('levels-back-btn');
+    if (levelsBackBtn) {
+      levelsBackBtn.addEventListener('click', () => {
+        showScreen('home');
+      });
+    }
 
     // Botón para mostrar pantalla de progreso
     if (homeProgressBtn) {
@@ -3830,8 +4118,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Reiniciar entrenamiento
     trainRestartBtn.addEventListener('click', () => {
-      // Si hay una lista de problemas específicos, reiniciar esa sesión; de lo contrario, sesión aleatoria
-      if (isSpecificTrainingActive()) {
+      // Reiniciar según el tipo de sesión: nivel, específica o aleatoria
+      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL && levelSession) {
+        startLevelSession(levelSession.levelId, levelSession.kind, levelSession.techniqueId);
+      } else if (isSpecificTrainingActive()) {
         startSpecificTrainingSession();
       } else {
         startTrainingSession();

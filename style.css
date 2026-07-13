@@ -539,7 +539,8 @@ button:disabled {
    respecto a la pantalla, no respecto al espacio sobrante. */
 .config-header,
 .progress-top-bar,
-#tables-screen .top-bar {
+#tables-screen .top-bar,
+#levels-screen .top-bar {
   padding-right: calc(var(--header-button-size) + 12px);
 }
 
@@ -1076,6 +1077,155 @@ input[type="checkbox"] {
   text-align: center;
   color: var(--muted);
   font-size: 14px;
+}
+
+/* --- Mapa de niveles de cálculo mental --- */
+#levels-screen {
+  gap: 20px;
+  align-items: center;
+}
+
+#levels-screen .top-bar {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  justify-content: flex-start;
+}
+
+.levels-map {
+  width: min(100%, 760px);
+  margin: 0 auto 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.level-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 26px;
+  padding: 18px 20px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 26px 54px rgba(5, 7, 13, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.level-card.locked {
+  opacity: 0.55;
+}
+
+.level-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.level-num {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: rgba(9, 14, 25, 0.75);
+  border: 1px solid var(--glass-highlight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.level-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.level-titles h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.level-titles p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.level-medal {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.level-techniques {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.level-tech-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.level-tech-info {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(9, 14, 25, 0.65);
+  border: 1px solid var(--glass-highlight);
+  color: var(--text-color);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.level-tech-practice {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 8px 18px var(--primary-glow);
+}
+
+.level-boss-btn {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #7c3aed 0%, #2575fc 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.level-boss-btn:active,
+.level-tech-practice:active {
+  transform: scale(0.98) translateY(1px);
+}
+
+.level-criteria {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.level-note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
 }
 
 /* --- Análisis del motor adaptativo (pantalla de progreso) --- */
