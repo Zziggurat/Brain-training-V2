@@ -3889,6 +3889,15 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAdaptiveState();
     // Cargar el progreso de niveles
     loadLevelProgress();
+    // Registrar las etiquetas de las habilidades de nivel en el motor
+    // adaptativo, para que el análisis las muestre con nombre legible.
+    const engineForLabels = getAdaptiveEngine();
+    const levelsForLabels = getLevelsModule();
+    if (engineForLabels && levelsForLabels && levelsForLabels.SKILL_META) {
+      Object.keys(levelsForLabels.SKILL_META).forEach((id) => {
+        engineForLabels.registerSkill(id, levelsForLabels.SKILL_META[id]);
+      });
+    }
     updateProgressBar();
     // Navegación desde la pantalla de inicio
     homeSettingsBtn.addEventListener('click', () => {

@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 
 const Levels = require('../lib/levels');
 
-test('define los 12 niveles con metadatos y 3 jugables', () => {
+test('define los 12 niveles con metadatos y 5 jugables', () => {
   assert.equal(Levels.LEVELS.length, 12);
   const playable = Levels.LEVELS.filter((l) => Array.isArray(l.techniques) && l.techniques.length > 0);
-  assert.equal(playable.length, 3);
+  assert.equal(playable.length, 5);
   Levels.LEVELS.forEach((l) => {
     assert.ok(l.id >= 1 && l.id <= 12);
     assert.ok(l.title.length > 0 && l.tagline.length > 0);
@@ -22,7 +22,7 @@ test('los generadores son deterministas con la misma semilla', () => {
 });
 
 test('todos los problemas generados están bien formados', () => {
-  for (const level of [1, 2, 3]) {
+  for (const level of [1, 2, 3, 4, 5]) {
     const rng = Levels.createRng(7 + level);
     const problems = Levels.generateBoss(level, rng);
     assert.ok(problems.length >= 16, `nivel ${level} genera su tanda completa`);
@@ -92,6 +92,55 @@ test('las anclas multiplican correctamente', () => {
     assert.equal(Number(m[1]) * Number(m[2]), p.answer);
     assert.ok([11, 12, 15, 25, 19, 21, 99].includes(Number(m[1])), `ancla válida: ${p.prompt}`);
   });
+});
+
+test('la multiplicación 2×2 es correcta y usa las formas esperadas', () => {
+  const problems = Levels.generateBoss(4, Levels.createRng(44));
+  problems.forEach((p) => {
+    const m = p.prompt.match(/^(\d+) × (\d+) = \?$/);
+    assert.ok(m, p.prompt);
+    assert.equal(Number(m[1]) * Number(m[2]), p.answer);
+  });
+  // La técnica base 100 mantiene ambos factores cerca de 100
+  const base100 = Levels.generatePractice(4, 'base-100', 20, Levels.createRng(4));
+  base100.forEach((p) => {
+    const m = p.prompt.match(/^(\d+) × (\d+) = \?$/);
+    [Number(m[1]), Number(m[2])].forEach((f) => assert.ok(f >= 91 && f <= 109 && f !== 100, p.prompt));
+  });
+  // La diferencia de cuadrados equidista de un centro redondo
+  const difsq = Levels.generatePractice(4, 'dif-cuadrados', 20, Levels.createRng(5));
+  difsq.forEach((p) => {
+    const m = p.prompt.match(/^(\d+) × (\d+) = \?$/);
+    assert.equal((Number(m[1]) + Number(m[2])) % 20, 0, `centro redondo: ${p.prompt}`);
+  });
+});
+
+test('la división del nivel 5 es exacta y los restos correctos', () => {
+  const problems = Levels.generateBoss(5, Levels.createRng(55));
+  problems.forEach((p) => {
+    const rem = p.prompt.match(/^Resto de (\d+) ÷ (\d+) = \?$/);
+    const div = p.prompt.match(/^(\d+) ÷ (\d+) = \?$/);
+    if (rem) {
+      assert.equal(Number(rem[1]) % Number(rem[2]), p.answer, p.prompt);
+      assert.ok(p.answer >= 0 && p.answer < Number(rem[2]));
+    } else if (div) {
+      assert.equal(Number(div[1]) % Number(div[2]), 0, `división exacta: ${p.prompt}`);
+      assert.equal(Number(div[1]) / Number(div[2]), p.answer);
+    } else {
+      assert.fail('formato inesperado: ' + p.prompt);
+    }
+  });
+});
+
+test('SKILL_META cubre todas las habilidades que emiten los generadores', () => {
+  for (const level of [1, 2, 3, 4, 5]) {
+    const problems = Levels.generateBoss(level, Levels.createRng(100 + level));
+    problems.forEach((p) => {
+      p.skills.forEach((skill) => {
+        assert.ok(Levels.SKILL_META[skill], `habilidad etiquetada: ${skill}`);
+      });
+    });
+  }
 });
 
 test('evaluateBoss otorga medallas según precisión y tiempo medio', () => {
