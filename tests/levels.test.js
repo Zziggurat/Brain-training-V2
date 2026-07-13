@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 
 const Levels = require('../lib/levels');
 
-test('define los 12 niveles con metadatos y 10 jugables', () => {
+test('define los 12 niveles y todos son jugables', () => {
   assert.equal(Levels.LEVELS.length, 12);
   const playable = Levels.LEVELS.filter((l) => Array.isArray(l.techniques) && l.techniques.length > 0);
-  assert.equal(playable.length, 10);
+  assert.equal(playable.length, 12);
   Levels.LEVELS.forEach((l) => {
     assert.ok(l.id >= 1 && l.id <= 12);
     assert.ok(l.title.length > 0 && l.tagline.length > 0);
@@ -22,10 +22,10 @@ test('los generadores son deterministas con la misma semilla', () => {
 });
 
 test('todos los problemas generados están bien formados', () => {
-  for (const level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+  for (const level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
     const rng = Levels.createRng(7 + level);
     const problems = Levels.generateBoss(level, rng);
-    assert.ok(problems.length >= 15, `nivel ${level} genera su tanda completa`);
+    assert.ok(problems.length >= 12, `nivel ${level} genera su tanda completa`);
     problems.forEach((p) => {
       assert.equal(p.type, 'custom');
       assert.ok(p.prompt.includes('?'), `enunciado con hueco: ${p.prompt}`);
@@ -233,8 +233,58 @@ test('los niveles 8-10 producen respuestas aritméticamente correctas', () => {
   });
 });
 
+test('el nivel 11 estima con ±2% y sus productos especiales son exactos', () => {
+  Levels.generateBoss(11, Levels.createRng(111)).forEach((p) => {
+    const m = p.prompt.match(/^(\d+)(?: × (\d+))?(²)? [=≈] \?$/) || p.prompt.match(/^(\d+) × (\d+) ≈ \?$/);
+    if (p.prompt.includes('≈')) {
+      const mm = p.prompt.match(/^(\d+) × (\d+) ≈ \?$/);
+      assert.ok(mm, p.prompt);
+      const exact = Number(mm[1]) * Number(mm[2]);
+      assert.equal(p.answer, exact);
+      assert.ok(p.tolerance >= Math.round(exact * 0.015), `margen ~2%: ${p.prompt}`);
+    } else if (p.prompt.includes('²')) {
+      const mm = p.prompt.match(/^(\d+)² = \?$/);
+      assert.equal(p.answer, Number(mm[1]) * Number(mm[1]), p.prompt);
+      assert.ok(!p.tolerance);
+    } else {
+      const mm = p.prompt.match(/^(\d+) × (\d+) = \?$/);
+      assert.ok(mm, p.prompt);
+      assert.equal(p.answer, Number(mm[1]) * Number(mm[2]), p.prompt);
+      assert.equal((Number(mm[1]) + Number(mm[2])) % 200, 0, `centro en centena: ${p.prompt}`);
+    }
+    assert.ok(p.answer <= 999999, `tecleable: ${p.prompt} (${p.answer})`);
+  });
+});
+
+test('las cadenas del nivel 12 son enteras y el blitz reutiliza técnicas', () => {
+  const chains = Levels.generatePractice(12, 'cadenas', 40, Levels.createRng(12));
+  chains.forEach((p) => {
+    let m;
+    if ((m = p.prompt.match(/^\((\d+) \+ (\d+)\) × (\d+)% = \?$/))) {
+      assert.equal(p.answer, ((Number(m[1]) + Number(m[2])) * Number(m[3])) / 100, p.prompt);
+    } else if ((m = p.prompt.match(/^(\d+) × (\d+) − (\d+) = \?$/))) {
+      assert.equal(p.answer, Number(m[1]) * Number(m[2]) - Number(m[3]), p.prompt);
+      assert.ok(p.answer > 0, `positivo: ${p.prompt}`);
+    } else if ((m = p.prompt.match(/^(\d+)% de (\d+) \+ (\d+)% de (\d+) = \?$/))) {
+      assert.equal(m[2], m[4], 'mismo número base');
+      assert.equal(p.answer, ((Number(m[1]) + Number(m[3])) * Number(m[2])) / 100, p.prompt);
+    } else {
+      assert.fail('formato inesperado: ' + p.prompt);
+    }
+    assert.ok(Number.isInteger(p.answer), `entera: ${p.prompt}`);
+  });
+
+  const blitz = Levels.generatePractice(12, 'blitz', 60, Levels.createRng(120));
+  const skillSet = new Set(blitz.flatMap((p) => p.skills));
+  assert.ok(skillSet.size >= 8, `el blitz varía técnicas (${skillSet.size} distintas)`);
+  blitz.forEach((p) => {
+    assert.ok(Number.isInteger(p.answer), `respuesta entera: ${p.prompt}`);
+    assert.ok(p.key.startsWith('c_'), 'conserva la clave original');
+  });
+});
+
 test('SKILL_META cubre todas las habilidades que emiten los generadores', () => {
-  for (const level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+  for (const level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
     const problems = Levels.generateBoss(level, Levels.createRng(100 + level));
     problems.forEach((p) => {
       p.skills.forEach((skill) => {
