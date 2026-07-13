@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 
 const Levels = require('../lib/levels');
 
-test('define los 12 niveles con metadatos y 7 jugables', () => {
+test('define los 12 niveles con metadatos y 10 jugables', () => {
   assert.equal(Levels.LEVELS.length, 12);
   const playable = Levels.LEVELS.filter((l) => Array.isArray(l.techniques) && l.techniques.length > 0);
-  assert.equal(playable.length, 7);
+  assert.equal(playable.length, 10);
   Levels.LEVELS.forEach((l) => {
     assert.ok(l.id >= 1 && l.id <= 12);
     assert.ok(l.title.length > 0 && l.tagline.length > 0);
@@ -22,7 +22,7 @@ test('los generadores son deterministas con la misma semilla', () => {
 });
 
 test('todos los problemas generados están bien formados', () => {
-  for (const level of [1, 2, 3, 4, 5, 6, 7]) {
+  for (const level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
     const rng = Levels.createRng(7 + level);
     const problems = Levels.generateBoss(level, rng);
     assert.ok(problems.length >= 15, `nivel ${level} genera su tanda completa`);
@@ -172,8 +172,69 @@ test('la estimación declara tolerancia coherente y el nivel 7 es correcto', () 
   });
 });
 
+test('los niveles 8-10 producen respuestas aritméticamente correctas', () => {
+  // Nivel 8: regla de tres, simplificación y cadenas de porcentajes
+  Levels.generateBoss(8, Levels.createRng(88)).forEach((p) => {
+    let m;
+    if ((m = p.prompt.match(/^(\d+) por (\d+) € → (\d+) por \? €$/))) {
+      assert.equal(p.answer, (Number(m[2]) / Number(m[1])) * Number(m[3]), p.prompt);
+    } else if ((m = p.prompt.match(/^(\d+) km en (\d+) h → \? km en (\d+) h$/))) {
+      assert.equal(p.answer, (Number(m[1]) / Number(m[2])) * Number(m[3]), p.prompt);
+    } else if ((m = p.prompt.match(/^(\d+) raciones: (\d+) huevos → (\d+) raciones: \?$/))) {
+      assert.equal(p.answer, (Number(m[2]) / Number(m[1])) * Number(m[3]), p.prompt);
+    } else if ((m = p.prompt.match(/^(\d+) de (\d+) = \? de (\d+)$/))) {
+      assert.equal(Number(m[1]) / Number(m[2]), p.answer / Number(m[3]), p.prompt);
+    } else if ((m = p.prompt.match(/^(\d+) sube (\d+)% y baja (\d+)% → \?$/))) {
+      const expected = (Number(m[1]) * (100 + Number(m[2])) * (100 - Number(m[3]))) / 10000;
+      assert.equal(p.answer, expected, p.prompt);
+      assert.ok(Number.isInteger(expected), `cadena entera: ${p.prompt}`);
+    } else {
+      assert.fail('formato inesperado: ' + p.prompt);
+    }
+    assert.ok(Number.isInteger(p.answer), `respuesta entera: ${p.prompt}`);
+  });
+
+  // Nivel 9: periódicos por división larga y milésimas exactas
+  Levels.generateBoss(9, Levels.createRng(99)).forEach((p) => {
+    let m;
+    if ((m = p.prompt.match(/^(\d+)\/(\d+) → 3 primeros decimales = \?$/))) {
+      const [num, den] = [Number(m[1]), Number(m[2])];
+      let digits = 0;
+      let r = num % den;
+      for (let i = 0; i < 3; i++) {
+        r *= 10;
+        digits = digits * 10 + Math.floor(r / den);
+        r %= den;
+      }
+      assert.equal(p.answer, digits, p.prompt);
+    } else if ((m = p.prompt.match(/^(\d+)\/(\d+) = \?\/1000$/))) {
+      assert.equal(p.answer, (Number(m[1]) * 1000) / Number(m[2]), p.prompt);
+      assert.ok(Number.isInteger(p.answer), `milésimas exactas: ${p.prompt}`);
+    } else {
+      assert.fail('formato inesperado: ' + p.prompt);
+    }
+  });
+
+  // Nivel 10: cubos, potencias de 2 y escalas
+  Levels.generateBoss(10, Levels.createRng(110)).forEach((p) => {
+    let m;
+    if ((m = p.prompt.match(/^(\d+)³ = \?$/))) {
+      assert.equal(p.answer, Math.pow(Number(m[1]), 3), p.prompt);
+    } else if ((m = p.prompt.match(/^2([⁰¹²³⁴⁵⁶⁷⁸⁹]+) = \?$/))) {
+      const sup = { '⁰': 0, '¹': 1, '²': 2, '³': 3, '⁴': 4, '⁵': 5, '⁶': 6, '⁷': 7, '⁸': 8, '⁹': 9 };
+      const exp = m[1].split('').reduce((acc, ch) => acc * 10 + sup[ch], 0);
+      assert.equal(p.answer, Math.pow(2, exp), p.prompt);
+    } else if ((m = p.prompt.match(/^([\d.  ]+) = \? miles$/))) {
+      const n = Number(m[1].replace(/[.  ]/g, ''));
+      assert.equal(p.answer, n / 1000, p.prompt);
+    } else {
+      assert.fail('formato inesperado: ' + p.prompt);
+    }
+  });
+});
+
 test('SKILL_META cubre todas las habilidades que emiten los generadores', () => {
-  for (const level of [1, 2, 3, 4, 5, 6, 7]) {
+  for (const level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
     const problems = Levels.generateBoss(level, Levels.createRng(100 + level));
     problems.forEach((p) => {
       p.skills.forEach((skill) => {

@@ -3180,6 +3180,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       trainProblemDiv.textContent = `${problem.dividend} ÷ ${problem.divisor} = ?`;
     }
+    // Los enunciados con contexto usan una tipografía más contenida
+    trainProblemDiv.classList.toggle('problem-long', !!problem.prompt && problem.prompt.length > 24);
 
     trainQuestionStartTime = Date.now();
     applyTrainingSkipPolicy();
