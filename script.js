@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     training: document.getElementById('training-screen'),
     tables: document.getElementById('tables-screen'),
     progress: document.getElementById('progress-screen'),
+    levels: document.getElementById('levels-screen'),
   };
 
   // Botones en la pantalla de inicio
@@ -85,9 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const TRAINING_CONTEXT = Object.freeze({
     GENERAL: 'general',
     SPECIFIC: 'specific',
+    LEVEL: 'level',
   });
   let trainingSessionContext = TRAINING_CONTEXT.GENERAL;
   let trainingHasMistake = false;
+  // Sesión de nivel en curso (práctica de técnica o jefe de nivel)
+  let levelSession = null;
 
   // Elementos de la pantalla de progreso
   const progressBackBtn = document.getElementById('progress-back-btn');
@@ -612,6 +616,11 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {Object} problem
    */
   function createProblemKey(problem) {
+    if (problem.key) {
+      // Problemas de niveles: clave agrupada por técnica y tramo, para que
+      // la maestría y el repaso no crezcan con cada instancia aleatoria.
+      return problem.key;
+    }
     if (problem.type === 'multiplication') {
       const x = Math.min(problem.a, problem.b);
       const y = Math.max(problem.a, problem.b);
@@ -852,6 +861,11 @@ document.addEventListener('DOMContentLoaded', () => {
       applyAdaptiveScheduling(problem, entry, { correct, skipped, mode });
     }
     saveMastery();
+    recordAdaptiveOutcome(problem, { correct, skipped, timedOut, timeTaken: ms });
+    // Capturar el resultado para la evaluación de la sesión de nivel en curso
+    if (mode === 'level' && levelSession) {
+      levelSession.results.push({ correct: !!correct && !skipped && !timedOut, timeMs: ms });
+    }
     scheduleAssistantPanelRefresh();
   }
 
@@ -900,6 +914,61 @@ document.addEventListener('DOMContentLoaded', () => {
       errorStreak: entry.errorStreak || 0,
       lastSeen: entry.lastSeen || 0,
     };
+  }
+
+  // ----- MOTOR ADAPTATIVO (lib/adaptiveEngine.js) -----
+  // Puente con el motor determinista de habilidades: registra cada intento,
+  // sesga la selección de problemas hacia las habilidades débiles/vencidas
+  // y alimenta el análisis de evolución de la pantalla de progreso.
+  // Si el módulo no está disponible, todos los enganches se desactivan solos.
+  const ADAPTIVE_STORAGE_KEY = 'adaptiveState';
+  let adaptiveState = null;
+
+  function getAdaptiveEngine() {
+    return typeof AdaptiveEngine !== 'undefined' && AdaptiveEngine ? AdaptiveEngine : null;
+  }
+
+  function loadAdaptiveState() {
+    const engine = getAdaptiveEngine();
+    if (!engine) return;
+    let raw = null;
+    try {
+      raw = JSON.parse(localStorage.getItem(ADAPTIVE_STORAGE_KEY) || 'null');
+    } catch (err) {
+      console.error('No se pudo cargar adaptiveState', err);
+    }
+    adaptiveState = engine.normalizeState(raw);
+  }
+
+  function saveAdaptiveState() {
+    if (!adaptiveState) return;
+    try {
+      localStorage.setItem(ADAPTIVE_STORAGE_KEY, JSON.stringify(adaptiveState));
+    } catch (err) {
+      console.error('No se pudo guardar adaptiveState', err);
+    }
+  }
+
+  function recordAdaptiveOutcome(problem, { correct, skipped, timedOut, timeTaken }) {
+    const engine = getAdaptiveEngine();
+    if (!engine) return;
+    if (!adaptiveState) loadAdaptiveState();
+    if (!adaptiveState) return;
+    engine.recordOutcome(adaptiveState, {
+      problem,
+      correct,
+      skipped,
+      timedOut,
+      timeMs: timeTaken,
+      now: Date.now(),
+    });
+    saveAdaptiveState();
+  }
+
+  function adaptiveProblemBias(problem, now) {
+    const engine = getAdaptiveEngine();
+    if (!engine || !adaptiveState) return 1;
+    return engine.problemBias(adaptiveState, problem, { now });
   }
 
   function calculateProblemWeightFromStatsFallback(
@@ -1026,7 +1095,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const baseInterval = spacedIntervals[0] || 10 * 60 * 1000;
       const penalty = Math.max(60 * 1000, Math.floor(baseInterval / 2));
       dueTimes[key] = now + penalty;
-      if (mode !== 'learning') {
+      // Solo las combinaciones de tablas entran en "Errores de hoy" (los
+      // ejercicios de nivel usan claves c_* que esa sesión no puede recrear).
+      if (mode !== 'learning' && parseProblemKey(key)) {
         const today = getTodayDate();
         if (!errorsToday[today]) {
           errorsToday[today] = [];
@@ -1499,6 +1570,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
+    // Recomendación a nivel de habilidad del motor adaptativo: detecta la
+    // tabla más débil comparada con la mediana del propio usuario.
+    const engine = getAdaptiveEngine();
+    if (engine && adaptiveState) {
+      const analysis = engine.analyze(adaptiveState, { now });
+      const wantedGroup = operation === 'multiplication' ? 'multiplicación' : 'división';
+      const weak = analysis.weaknesses.find(
+        (s) => s.meta && s.meta.table && s.meta.group === wantedGroup && s.meta.table >= min && s.meta.table <= max
+      );
+      if (weak) {
+        pushRec({
+          id: `skill_${weak.id}`,
+          title: `Refuerza ${weak.label.toLowerCase()}`,
+          reason: `Por debajo de tu media: ${Math.round(weak.accEff * 100)}% de acierto reciente`,
+          action: () => startSpecificRowTraining(weak.meta.table),
+        });
+      }
+    }
+
     const rowCandidates = Array.from(rowStats.values()).filter((row) => row.low > 0);
     rowCandidates.sort((a, b) => b.low - a.low);
     if (rowCandidates.length > 0) {
@@ -1625,6 +1715,152 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Mostrar la pantalla de progreso, construyendo el mapa de calor y métricas.
    */
+  /**
+   * Renderizar la tarjeta "Análisis de tu evolución" con los datos del
+   * motor adaptativo: tendencia semanal, fortalezas, puntos a reforzar,
+   * repasos de habilidad pendientes e historial de los últimos 14 días.
+   */
+  function renderPerformanceAnalysis() {
+    const container = document.getElementById('analysis-card');
+    if (!container) return;
+    container.innerHTML = '';
+    const title = document.createElement('h3');
+    title.textContent = 'Análisis de tu evolución';
+    container.appendChild(title);
+    const engine = getAdaptiveEngine();
+    if (engine && !adaptiveState) loadAdaptiveState();
+    const analysis = engine && adaptiveState ? engine.analyze(adaptiveState, { now: Date.now() }) : null;
+    if (!analysis || analysis.totalSkills === 0) {
+      const placeholder = document.createElement('p');
+      placeholder.className = 'analysis-placeholder';
+      placeholder.textContent =
+        'Completa algunas sesiones de práctica y aquí verás tus fortalezas, tus puntos débiles y tu evolución semana a semana.';
+      container.appendChild(placeholder);
+      return;
+    }
+    renderTrendSummary(container, analysis.trend);
+    renderSkillChips(container, '💪 Fortalezas', analysis.strengths, 'strength', (s) => `${Math.round(s.accEff * 100)}% de acierto`);
+    renderSkillChips(container, '🎯 A reforzar', analysis.weaknesses, 'weak', (s) => `${Math.round(s.accEff * 100)}% de acierto`);
+    renderSkillChips(container, '⏰ Toca repasar', analysis.review, 'review', () => 'repaso vencido');
+    renderHistoryBars(container, analysis.recentDays);
+  }
+
+  /** Resumen de tendencia: última semana frente a la anterior. */
+  function renderTrendSummary(container, trend) {
+    const wrap = document.createElement('div');
+    wrap.className = 'analysis-trend';
+    const lines = [];
+    if (trend.currAccuracy !== null) {
+      let text = `Precisión de los últimos 7 días: ${Math.round(trend.currAccuracy * 100)}%`;
+      let cls = '';
+      if (trend.accuracyDelta !== null) {
+        const pts = Math.round(trend.accuracyDelta * 100);
+        if (pts >= 2) {
+          text += ` (▲ +${pts} pts frente a la semana anterior)`;
+          cls = 'up';
+        } else if (pts <= -2) {
+          text += ` (▼ ${pts} pts frente a la semana anterior)`;
+          cls = 'down';
+        } else {
+          text += ' (estable frente a la semana anterior)';
+        }
+      }
+      lines.push({ text, cls });
+    }
+    if (trend.currAvgTime !== null) {
+      let text = `Tiempo medio por respuesta: ${(trend.currAvgTime / 1000).toFixed(1)} s`;
+      let cls = '';
+      if (trend.timeDelta !== null) {
+        const secs = trend.timeDelta / 1000;
+        if (secs <= -0.3) {
+          text += ` (▲ ${Math.abs(secs).toFixed(1)} s más rápido que la semana anterior)`;
+          cls = 'up';
+        } else if (secs >= 0.3) {
+          text += ` (▼ ${secs.toFixed(1)} s más lento que la semana anterior)`;
+          cls = 'down';
+        }
+      }
+      lines.push({ text, cls });
+    }
+    if (trend.currVolume > 0 || trend.prevVolume > 0) {
+      lines.push({ text: `Ejercicios: ${trend.currVolume} esta semana · ${trend.prevVolume} la anterior`, cls: '' });
+    }
+    if (!lines.length) {
+      lines.push({ text: 'Practica varios días para ver tu tendencia semanal.', cls: '' });
+    }
+    lines.forEach(({ text, cls }) => {
+      const p = document.createElement('p');
+      if (cls) p.classList.add(cls);
+      p.textContent = text;
+      wrap.appendChild(p);
+    });
+    container.appendChild(wrap);
+  }
+
+  /** Grupo de fichas de habilidades (fortalezas, refuerzos o repasos). */
+  function renderSkillChips(container, heading, skills, kind, detailFor) {
+    if (!skills || !skills.length) return;
+    const section = document.createElement('div');
+    section.className = 'analysis-section';
+    const h4 = document.createElement('h4');
+    h4.textContent = heading;
+    section.appendChild(h4);
+    const list = document.createElement('div');
+    list.className = 'analysis-chips';
+    skills.forEach((skill) => {
+      const chip = document.createElement('span');
+      chip.className = `analysis-chip ${kind}`;
+      const name = document.createElement('strong');
+      name.textContent = skill.label;
+      chip.appendChild(name);
+      const detail = document.createElement('small');
+      detail.textContent = detailFor(skill);
+      chip.appendChild(detail);
+      list.appendChild(chip);
+    });
+    section.appendChild(list);
+    container.appendChild(section);
+  }
+
+  /** Mini gráfico de barras CSS con la actividad de los últimos 14 días. */
+  function renderHistoryBars(container, days) {
+    if (!days || !days.length) return;
+    const section = document.createElement('div');
+    section.className = 'analysis-section';
+    const h4 = document.createElement('h4');
+    h4.textContent = '📅 Últimos 14 días';
+    section.appendChild(h4);
+    const bars = document.createElement('div');
+    bars.className = 'analysis-bars';
+    const maxQ = Math.max(1, ...days.map((d) => d.q));
+    days.forEach((d) => {
+      const bar = document.createElement('div');
+      bar.className = 'analysis-bar';
+      const fill = document.createElement('div');
+      fill.className = 'analysis-bar-fill';
+      fill.style.height = d.q > 0 ? `${Math.max(10, Math.round((d.q / maxQ) * 100))}%` : '4%';
+      if (d.q === 0) {
+        fill.classList.add('empty');
+      } else {
+        const acc = d.ok / d.q;
+        fill.classList.add(acc >= 0.85 ? 'good' : acc >= 0.6 ? 'mid' : 'low');
+      }
+      const [, month, dayNum] = d.day.split('-');
+      bar.title =
+        d.q > 0
+          ? `${dayNum}/${month}: ${d.q} ejercicios, ${Math.round((d.ok / d.q) * 100)}% de acierto`
+          : `${dayNum}/${month}: sin actividad`;
+      bar.appendChild(fill);
+      bars.appendChild(bar);
+    });
+    section.appendChild(bars);
+    const legend = document.createElement('p');
+    legend.className = 'analysis-legend';
+    legend.textContent = 'Altura = volumen de práctica · Color = precisión del día';
+    section.appendChild(legend);
+    container.appendChild(section);
+  }
+
   function showProgressScreen() {
     // Asegurarnos de que la configuración esté cargada antes de generar el mapa de calor
     try {
@@ -1638,6 +1874,7 @@ document.addEventListener('DOMContentLoaded', () => {
       buildHeatmap();
       renderDailyMetrics();
       renderDailyGoal();
+      renderPerformanceAnalysis();
     } catch (e) {
       // En caso de error (por ejemplo, combinación inválida), imprimimos en la consola
       console.error('Error al construir la pantalla de progreso', e);
@@ -1759,6 +1996,23 @@ document.addEventListener('DOMContentLoaded', () => {
     trainingSessionContext = context;
     trainingHasMistake = false;
     applyTrainingSkipPolicy();
+  }
+
+  /** Modo con el que se registran los intentos de la sesión actual. */
+  function currentTrainingMode() {
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) return 'level';
+    return isSpecificTrainingActive() ? 'specific' : 'training';
+  }
+
+  /**
+   * Comprobar si un valor responde al problema. Los ejercicios de
+   * estimación declaran `tolerance`: cualquier valor dentro del margen
+   * cuenta como acierto (los problemas exactos usan tolerancia 0).
+   */
+  function isAnswerAcceptable(problem, value) {
+    if (!problem || !Number.isFinite(value)) return false;
+    const tolerance = Number.isFinite(problem.tolerance) ? problem.tolerance : 0;
+    return Math.abs(value - problem.answer) <= tolerance;
   }
 
   function scheduleNextTrainingQuestion(delay = 800) {
@@ -2025,7 +2279,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let weighted = [];
     const now = Date.now();
     for (const prob of base) {
-      const weight = calculateProblemWeight(prob, { now });
+      // El peso base (estrellas + repaso) se modula con el sesgo del motor
+      // adaptativo: habilidades débiles o vencidas pesan más, dominadas menos.
+      const baseWeight = calculateProblemWeight(prob, { now });
+      const weight = baseWeight > 0 ? Math.max(1, Math.round(baseWeight * adaptiveProblemBias(prob, now))) : 0;
       for (let w = 0; w < weight; w++) {
         weighted.push(prob);
       }
@@ -2134,7 +2391,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let weightedSel = [];
     const now = Date.now();
     for (const prob of selected) {
-      const weight = calculateProblemWeight(prob, { now });
+      const baseWeight = calculateProblemWeight(prob, { now });
+      const weight = baseWeight > 0 ? Math.max(1, Math.round(baseWeight * adaptiveProblemBias(prob, now))) : 0;
       for (let w = 0; w < weight; w++) {
         weightedSel.push(prob);
       }
@@ -2693,7 +2951,206 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Iniciar sesión de entrenamiento.
    */
+  // ----- NIVELES DE CÁLCULO MENTAL (lib/levels.js) -----
+  const LEVEL_PROGRESS_KEY = 'levelProgress';
+  let levelProgress = {};
+
+  function getLevelsModule() {
+    return typeof Levels !== 'undefined' && Levels ? Levels : null;
+  }
+
+  function loadLevelProgress() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LEVEL_PROGRESS_KEY) || 'null');
+      levelProgress = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (err) {
+      console.error('No se pudo cargar levelProgress', err);
+      levelProgress = {};
+    }
+  }
+
+  function saveLevelProgress() {
+    try {
+      localStorage.setItem(LEVEL_PROGRESS_KEY, JSON.stringify(levelProgress));
+    } catch (err) {
+      console.error('No se pudo guardar levelProgress', err);
+    }
+  }
+
+  const MEDAL_LABELS = { bronze: '🥉 Bronce', silver: '🥈 Plata', gold: '🥇 Oro' };
+
+  /** Iniciar práctica de técnica o jefe de nivel reutilizando el entrenamiento. */
+  function startLevelSession(levelId, kind, techniqueId = null) {
+    const LevelsMod = getLevelsModule();
+    if (!LevelsMod) return;
+    const problems =
+      kind === 'boss' ? LevelsMod.generateBoss(levelId) : LevelsMod.generatePractice(levelId, techniqueId, 10);
+    if (!problems.length) return;
+    currentSpecificSelection = null;
+    levelSession = { levelId, kind, techniqueId, results: [] };
+    configureTrainingSession(TRAINING_CONTEXT.LEVEL);
+    trainProblems = problems;
+    trainIndex = 0;
+    trainCorrectCount = 0;
+    trainTypedAnswer = '';
+    trainScoreDiv.textContent = '';
+    trainRestartBtn.classList.add('hidden');
+    showScreen('training');
+    renderTrainingProblem();
+  }
+
+  /** Cerrar la sesión de nivel: resumen y, en el jefe, medalla y registro. */
+  function finishLevelSession() {
+    const LevelsMod = getLevelsModule();
+    const session = levelSession;
+    if (!LevelsMod || !session) return;
+    const level = LevelsMod.getLevel(session.levelId);
+    const summary = LevelsMod.evaluateBoss(session.results, level && level.criteria ? level.criteria : undefined);
+    const accPct = Math.round(summary.accuracy * 100);
+    const avgTxt = summary.avgMs > 0 ? ` · ${(summary.avgMs / 1000).toFixed(1)} s por ítem` : '';
+    trainScoreDiv.textContent = `Aciertos: ${summary.correct} de ${summary.total} (${accPct}%${avgTxt})`;
+    if (session.kind === 'boss') {
+      const prev = levelProgress[session.levelId] || {};
+      if (summary.medal) {
+        levelProgress[session.levelId] = {
+          medal: LevelsMod.betterMedal(summary.medal, prev.medal || null),
+          bestAcc: Math.max(prev.bestAcc || 0, summary.accuracy),
+          bestAvgMs: prev.bestAvgMs > 0 && prev.bestAvgMs < summary.avgMs ? prev.bestAvgMs : summary.avgMs,
+          attempts: (prev.attempts || 0) + 1,
+          lastPlayed: Date.now(),
+        };
+        saveLevelProgress();
+        setFeedback(trainFeedbackDiv, `${MEDAL_LABELS[summary.medal]}: jefe del nivel ${session.levelId} superado.`, 'success');
+        showToast(`${MEDAL_LABELS[summary.medal]} — Nivel ${session.levelId}: ${level.title}`, 'success');
+      } else {
+        levelProgress[session.levelId] = Object.assign({}, prev, {
+          attempts: (prev.attempts || 0) + 1,
+          lastPlayed: Date.now(),
+        });
+        saveLevelProgress();
+        setFeedback(
+          trainFeedbackDiv,
+          'Sin medalla esta vez: necesitas al menos un 80% de acierto. Repasa las técnicas y reinténtalo.',
+          'error'
+        );
+      }
+    } else {
+      setFeedback(
+        trainFeedbackDiv,
+        accPct >= 90 ? '¡Técnica dominada! Atrévete con el jefe de nivel.' : 'Buen entrenamiento: repite la técnica hasta rozar el 100%.',
+        accPct >= 90 ? 'success' : 'neutral'
+      );
+    }
+    trainRestartBtn.classList.remove('hidden');
+  }
+
+  /** Construir el mapa de niveles. */
+  function renderLevelsMap() {
+    const container = document.getElementById('levels-map');
+    const LevelsMod = getLevelsModule();
+    if (!container || !LevelsMod) return;
+    container.innerHTML = '';
+    LevelsMod.LEVELS.forEach((level) => {
+      const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
+      const playable = Array.isArray(level.techniques) && level.techniques.length > 0;
+      const progress = levelProgress[level.id] || null;
+
+      const card = document.createElement('div');
+      card.className = 'level-card';
+      if (!unlocked) card.classList.add('locked');
+
+      const head = document.createElement('div');
+      head.className = 'level-head';
+      const badge = document.createElement('span');
+      badge.className = 'level-num';
+      badge.textContent = unlocked ? level.emoji : '🔒';
+      head.appendChild(badge);
+      const titles = document.createElement('div');
+      titles.className = 'level-titles';
+      const h3 = document.createElement('h3');
+      h3.textContent = `Nivel ${level.id} · ${level.title}`;
+      const tagline = document.createElement('p');
+      tagline.textContent = level.tagline;
+      titles.appendChild(h3);
+      titles.appendChild(tagline);
+      head.appendChild(titles);
+      const medal = document.createElement('span');
+      medal.className = 'level-medal';
+      medal.textContent = progress && progress.medal ? MEDAL_LABELS[progress.medal].split(' ')[0] : '';
+      head.appendChild(medal);
+      card.appendChild(head);
+
+      if (!unlocked) {
+        const note = document.createElement('p');
+        note.className = 'level-note';
+        note.textContent = 'Consigue una medalla en el nivel anterior para desbloquearlo.';
+        card.appendChild(note);
+      } else if (!playable) {
+        const note = document.createElement('p');
+        note.className = 'level-note';
+        note.textContent = '🚧 En construcción: llegará en una próxima actualización.';
+        card.appendChild(note);
+      } else {
+        const list = document.createElement('div');
+        list.className = 'level-techniques';
+        level.techniques.forEach((tech) => {
+          const row = document.createElement('div');
+          row.className = 'level-tech-row';
+          const info = document.createElement('button');
+          info.className = 'level-tech-info';
+          info.type = 'button';
+          info.textContent = `📖 ${tech.name}`;
+          info.setAttribute('aria-label', `Ver explicación de ${tech.name}`);
+          info.addEventListener('click', () => {
+            openModal(tech.name, tech.steps);
+          });
+          const practice = document.createElement('button');
+          practice.className = 'level-tech-practice';
+          practice.type = 'button';
+          practice.textContent = 'Practicar';
+          practice.addEventListener('click', () => {
+            startLevelSession(level.id, 'practice', tech.id);
+          });
+          row.appendChild(info);
+          row.appendChild(practice);
+          list.appendChild(row);
+        });
+        card.appendChild(list);
+
+        const bossBtn = document.createElement('button');
+        bossBtn.className = 'level-boss-btn';
+        bossBtn.type = 'button';
+        bossBtn.textContent = `⚔️ Jefe de nivel (${level.bossCount} ejercicios)`;
+        bossBtn.addEventListener('click', () => {
+          startLevelSession(level.id, 'boss');
+        });
+        card.appendChild(bossBtn);
+
+        const criteria = document.createElement('p');
+        criteria.className = 'level-criteria';
+        const c = level.criteria;
+        criteria.textContent = `🥇 ${Math.round(c.gold.acc * 100)}% y ≤${(c.gold.avgMs / 1000).toFixed(1)} s · 🥈 ${Math.round(c.silver.acc * 100)}% y ≤${(c.silver.avgMs / 1000).toFixed(1)} s · 🥉 ${Math.round(c.bronze.acc * 100)}%`;
+        card.appendChild(criteria);
+
+        if (progress && progress.bestAcc) {
+          const best = document.createElement('p');
+          best.className = 'level-note';
+          const bestAvg = progress.bestAvgMs > 0 ? ` · mejor ritmo ${(progress.bestAvgMs / 1000).toFixed(1)} s` : '';
+          best.textContent = `Mejor marca: ${Math.round(progress.bestAcc * 100)}%${bestAvg}`;
+          card.appendChild(best);
+        }
+      }
+      container.appendChild(card);
+    });
+  }
+
+  function showLevelsScreen() {
+    renderLevelsMap();
+    showScreen('levels');
+  }
+
   function startTrainingSession() {
+    levelSession = null;
     configureTrainingSession(TRAINING_CONTEXT.GENERAL);
     trainProblems = generateProblems();
     trainIndex = 0;
@@ -2711,19 +3168,29 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderTrainingProblem() {
     const problem = trainProblems[trainIndex];
-    const { multipleChoice } = getActiveModeConfig();
+    // Los problemas de nivel traen su propio enunciado y se responden
+    // siempre con el teclado numérico (mide pensamiento, no suerte).
+    const multipleChoice = getActiveModeConfig().multipleChoice && !problem.prompt;
     // Mostrar progreso basado en la longitud actual de la lista de problemas
     trainProgressSpan.textContent = `${trainIndex + 1}/${trainProblems.length}`;
-    if (problem.type === 'multiplication') {
+    if (problem.prompt) {
+      trainProblemDiv.textContent = problem.prompt;
+    } else if (problem.type === 'multiplication') {
       trainProblemDiv.textContent = `${problem.a} × ${problem.b} = ?`;
     } else {
       trainProblemDiv.textContent = `${problem.dividend} ÷ ${problem.divisor} = ?`;
     }
+    // Los enunciados con contexto usan una tipografía más contenida
+    trainProblemDiv.classList.toggle('problem-long', !!problem.prompt && problem.prompt.length > 24);
 
     trainQuestionStartTime = Date.now();
     applyTrainingSkipPolicy();
 
     setFeedback(trainFeedbackDiv, '');
+    // En la práctica de técnica se muestra la pista pedagógica del ejercicio
+    if (levelSession && levelSession.kind === 'practice' && problem.hint) {
+      setFeedback(trainFeedbackDiv, `💡 ${problem.hint}`);
+    }
     trainAnswerArea.innerHTML = '';
     trainTypedAnswer = '';
 
@@ -2852,7 +3319,7 @@ document.addEventListener('DOMContentLoaded', () => {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: isSpecificTrainingActive() ? 'specific' : 'training',
+      mode: currentTrainingMode(),
       source: 'multiple-choice',
     });
     // Alimentar las métricas diarias también desde el entrenamiento
@@ -2871,7 +3338,17 @@ document.addEventListener('DOMContentLoaded', () => {
       scheduleNextTrainingQuestion(500);
     } else {
       trainingHasMistake = true;
-      if (isSpecificContext) {
+      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+        // En niveles el fallo no termina la sesión: se muestra la solución
+        // y se avanza (la medalla se juega con la precisión del conjunto).
+        buttons.forEach((b) => {
+          const val = parseInt(b.textContent, 10);
+          b.classList.add(val === correct ? 'correct' : 'incorrect');
+        });
+        setFeedback(trainFeedbackDiv, `La respuesta era ${correct}.`, 'error');
+        saveStats();
+        scheduleNextTrainingQuestion(1200);
+      } else if (isSpecificContext) {
         btn.classList.add('incorrect');
         setFeedback(
           trainFeedbackDiv,
@@ -2925,12 +3402,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = Date.now();
     const timeTaken = now - trainQuestionStartTime;
     const value = parseInt(trainTypedAnswer, 10);
-    const isCorrect = value === correct;
+    const isCorrect = isAnswerAcceptable(currentProblem, value);
     recordProblemAttempt(currentProblem, {
       correct: isCorrect,
       timeTaken,
       skipped: false,
-      mode: isSpecificTrainingActive() ? 'specific' : 'training',
+      mode: currentTrainingMode(),
       source: 'written',
     });
     // Alimentar las métricas diarias también desde el entrenamiento
@@ -2938,18 +3415,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const isSpecificContext = trainingSessionContext === TRAINING_CONTEXT.SPECIFIC;
 
     if (isCorrect) {
-      // Correcto: sumar puntaje y continuar
+      // Correcto: sumar puntaje y continuar. En estimaciones aceptadas
+      // dentro del margen se muestra además el valor exacto.
       trainCorrectCount++;
       stats.totalCorrect++;
       display.classList.add('correct');
-      setFeedback(trainFeedbackDiv, '¡Correcto!', 'success');
+      const approxNote =
+        currentProblem && currentProblem.tolerance > 0 && value !== currentProblem.answer
+          ? ` Exacto: ${currentProblem.answer}.`
+          : '';
+      setFeedback(trainFeedbackDiv, `¡Correcto!${approxNote}`, 'success');
       saveStats();
-      scheduleNextTrainingQuestion(500);
+      scheduleNextTrainingQuestion(approxNote ? 900 : 500);
     } else {
       trainingHasMistake = true;
       const correctText = String(correct);
       display.classList.add('incorrect');
-      if (isSpecificContext) {
+      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+        display.textContent = correctText;
+        setFeedback(trainFeedbackDiv, `La respuesta era ${correctText}.`, 'error');
+        saveStats();
+        scheduleNextTrainingQuestion(1200);
+      } else if (isSpecificContext) {
         setFeedback(
           trainFeedbackDiv,
           'Respuesta incorrecta. Intenta nuevamente o usa "Mostrar respuesta".',
@@ -2982,6 +3469,10 @@ document.addEventListener('DOMContentLoaded', () => {
       trainTimer = null;
     }
     hideTrainSkipButton();
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL && levelSession) {
+      finishLevelSession();
+      return;
+    }
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     setFeedback(trainFeedbackDiv, '¡Sesión completada!', 'success');
     trainRestartBtn.classList.remove('hidden');
@@ -3014,6 +3505,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (trainTimer) {
       clearInterval(trainTimer);
       trainTimer = null;
+    }
+    // En sesiones de nivel, agotar el tiempo cuenta como fallo del ítem
+    // pero la sesión continúa con el siguiente ejercicio.
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+      const levelProblem = trainProblems[trainIndex];
+      if (levelProblem && reason === 'time') {
+        const timeTaken = Date.now() - trainQuestionStartTime;
+        recordProblemAttempt(levelProblem, {
+          correct: false,
+          timeTaken,
+          skipped: false,
+          mode: 'level',
+          source: 'timeout',
+          timedOut: true,
+        });
+        updateDailyStats(false, timeTaken);
+        const display = trainAnswerArea.querySelector('#train-display');
+        if (display) display.textContent = String(levelProblem.answer);
+        setFeedback(trainFeedbackDiv, `¡Tiempo agotado! La respuesta era ${levelProblem.answer}.`, 'error');
+      }
+      trainAnswerArea.querySelectorAll('button').forEach((btn) => {
+        btn.disabled = true;
+      });
+      scheduleNextTrainingQuestion(1200);
+      return;
     }
     disableTrainSkipButton();
     applyTrainingSkipPolicy();
@@ -3092,6 +3608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isSpecificTrainingActive()) {
       return;
     }
+    levelSession = null;
     configureTrainingSession(TRAINING_CONTEXT.SPECIFIC);
     trainProblems = generateSpecificProblems(currentSpecificSelection);
     trainIndex = 0;
@@ -3386,6 +3903,19 @@ document.addEventListener('DOMContentLoaded', () => {
     loadErrors();
     // Cargar estadísticas diarias
     loadDailyStats();
+    // Cargar el estado del motor adaptativo
+    loadAdaptiveState();
+    // Cargar el progreso de niveles
+    loadLevelProgress();
+    // Registrar las etiquetas de las habilidades de nivel en el motor
+    // adaptativo, para que el análisis las muestre con nombre legible.
+    const engineForLabels = getAdaptiveEngine();
+    const levelsForLabels = getLevelsModule();
+    if (engineForLabels && levelsForLabels && levelsForLabels.SKILL_META) {
+      Object.keys(levelsForLabels.SKILL_META).forEach((id) => {
+        engineForLabels.registerSkill(id, levelsForLabels.SKILL_META[id]);
+      });
+    }
     updateProgressBar();
     // Navegación desde la pantalla de inicio
     homeSettingsBtn.addEventListener('click', () => {
@@ -3406,6 +3936,19 @@ document.addEventListener('DOMContentLoaded', () => {
     homeTablesBtn.addEventListener('click', () => {
       showTablesScreen();
     });
+    // Pantalla de niveles de cálculo mental
+    const homeLevelsBtn = document.getElementById('home-levels-btn');
+    if (homeLevelsBtn) {
+      homeLevelsBtn.addEventListener('click', () => {
+        showLevelsScreen();
+      });
+    }
+    const levelsBackBtn = document.getElementById('levels-back-btn');
+    if (levelsBackBtn) {
+      levelsBackBtn.addEventListener('click', () => {
+        showScreen('home');
+      });
+    }
 
     // Botón para mostrar pantalla de progreso
     if (homeProgressBtn) {
@@ -3602,8 +4145,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Reiniciar entrenamiento
     trainRestartBtn.addEventListener('click', () => {
-      // Si hay una lista de problemas específicos, reiniciar esa sesión; de lo contrario, sesión aleatoria
-      if (isSpecificTrainingActive()) {
+      // Reiniciar según el tipo de sesión: nivel, específica o aleatoria
+      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL && levelSession) {
+        startLevelSession(levelSession.levelId, levelSession.kind, levelSession.techniqueId);
+      } else if (isSpecificTrainingActive()) {
         startSpecificTrainingSession();
       } else {
         startTrainingSession();
