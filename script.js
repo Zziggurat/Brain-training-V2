@@ -6,25 +6,30 @@
 document.addEventListener('DOMContentLoaded', () => {
   // Referencias a las diferentes pantallas
   const screens = {
+    // Pestañas principales
     home: document.getElementById('home-screen'),
-    config: document.getElementById('config-screen'),
+    train: document.getElementById('train-screen'),
+    learn: document.getElementById('learn-screen'),
+    analysis: document.getElementById('progress-screen'),
+    profile: document.getElementById('profile-screen'),
+    // Subpantallas y modo enfoque
     learning: document.getElementById('learning-screen'),
     training: document.getElementById('training-screen'),
     tables: document.getElementById('tables-screen'),
-    progress: document.getElementById('progress-screen'),
     levels: document.getElementById('levels-screen'),
   };
 
+  // Pestañas de la barra de navegación y pestaña "madre" de cada subpantalla
+  const TAB_SCREENS = ['home', 'train', 'learn', 'analysis', 'profile'];
+  const SUBSCREEN_TAB = { tables: 'learn', levels: 'train' };
+  let currentTab = 'home';
+
   // Botones en la pantalla de inicio
-  const homeSettingsBtn = document.getElementById('home-settings-btn');
   const homeLearnBtn = document.getElementById('home-learn-btn');
-  const homeTrainBtn = document.getElementById('home-train-btn');
   // Botón para entrenar los errores del día
   const homeErrorsBtn = document.getElementById('home-errors-btn');
   const homeTablesBtn = document.getElementById('home-tables-btn');
   // Botón para la pantalla de progreso
-  const homeProgressBtn = document.getElementById('home-progress-btn');
-  const homeProgressShortcut = document.getElementById('home-progress-shortcut');
   const homeOpMulBtn = document.getElementById('home-op-mul');
   const homeOpDivBtn = document.getElementById('home-op-div');
 
@@ -33,8 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const progressText = document.getElementById('progress-text');
 
   // Configuración: inputs y botones
-  const configBackBtn = document.getElementById('config-back-btn');
-  const configSaveBtn = document.getElementById('config-save-btn');
   const operationRadios = document.querySelectorAll('input[name="operation"]');
   const configMinInput = document.getElementById('config-min');
   const configMaxInput = document.getElementById('config-max');
@@ -94,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let levelSession = null;
 
   // Elementos de la pantalla de progreso
-  const progressBackBtn = document.getElementById('progress-back-btn');
   const heatmapContainer = document.getElementById('heatmap-container');
   const metricsCard = document.getElementById('metrics-card');
   const goalCard = document.getElementById('goal-card');
@@ -1861,6 +1863,325 @@ document.addEventListener('DOMContentLoaded', () => {
     container.appendChild(section);
   }
 
+  // ----- PANEL DE INICIO, ENTRENAR, BIBLIOTECA Y PERFIL -----
+
+  /** Racha de días consecutivos con actividad según el historial del motor. */
+  function computeStreakDays() {
+    const engine = getAdaptiveEngine();
+    if (!engine || !adaptiveState) return 0;
+    const history = adaptiveState.history || {};
+    const DAY = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const todayRec = history[engine.todayKey(now)];
+    let streak = 0;
+    // Si hoy aún no hay actividad, la racha viva se cuenta desde ayer.
+    const start = todayRec && todayRec.q > 0 ? 0 : 1;
+    for (let i = start; i < 400; i++) {
+      const rec = history[engine.todayKey(now - i * DAY)];
+      if (rec && rec.q > 0) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  /** Siguiente reto de niveles: primer nivel sin medalla o sin oro. */
+  function findNextChallenge() {
+    const LevelsMod = getLevelsModule();
+    if (!LevelsMod) return null;
+    const unlockedPlayable = LevelsMod.LEVELS.filter(
+      (l) => Array.isArray(l.techniques) && l.techniques.length > 0 && LevelsMod.isUnlocked(l.id, levelProgress)
+    );
+    let target = unlockedPlayable.find((l) => !(levelProgress[l.id] && levelProgress[l.id].medal));
+    if (!target) {
+      target = unlockedPlayable.find((l) => levelProgress[l.id] && levelProgress[l.id].medal !== 'gold');
+    }
+    return target || null;
+  }
+
+  function countMedals() {
+    return Object.keys(levelProgress).filter((id) => levelProgress[id] && levelProgress[id].medal).length;
+  }
+
+  /** Panel de Inicio: saludo, racha, anillo de meta diaria y próximo reto. */
+  function renderHomeDashboard() {
+    const greeting = document.getElementById('home-greeting');
+    if (greeting) {
+      const hour = new Date().getHours();
+      greeting.textContent =
+        hour < 7 ? 'Entrenando a deshoras 🌙' : hour < 13 ? '¡Buenos días! Tu mente, primero.' : hour < 20 ? '¡Buenas tardes! Toca entrenar.' : 'Última sesión del día 🌆';
+    }
+    const streakChip = document.getElementById('streak-chip');
+    if (streakChip) {
+      const streak = computeStreakDays();
+      streakChip.textContent = `🔥 ${streak}`;
+      streakChip.title = streak === 1 ? '1 día seguido entrenando' : `${streak} días seguidos entrenando`;
+    }
+    // Anillo de meta diaria
+    const ringFill = document.getElementById('goal-ring-fill');
+    const ringCount = document.getElementById('goal-ring-count');
+    const done = dailyStats.totalQuestions || 0;
+    if (ringFill) {
+      const circumference = 2 * Math.PI * 52;
+      const pct = Math.min(1, done / DAILY_GOAL);
+      ringFill.style.strokeDasharray = `${circumference}`;
+      ringFill.style.strokeDashoffset = `${circumference * (1 - pct)}`;
+      ringFill.classList.toggle('complete', pct >= 1);
+    }
+    if (ringCount) {
+      ringCount.textContent = `${done}/${DAILY_GOAL}`;
+    }
+    // Pista bajo el botón de entrenar: qué contendrá la sesión inteligente
+    const hint = document.getElementById('smart-session-hint');
+    if (hint) {
+      const today = getTodayDate();
+      const errorCount = (errorsToday[today] || []).filter((key) => parseProblemKey(key)).length;
+      const engine = getAdaptiveEngine();
+      let dueSkills = 0;
+      if (engine && adaptiveState) {
+        dueSkills = engine.analyze(adaptiveState, { now: Date.now() }).review.length;
+      }
+      const parts = [];
+      if (errorCount > 0) parts.push(`${errorCount} error${errorCount === 1 ? '' : 'es'} de hoy`);
+      if (dueSkills > 0) parts.push(`${dueSkills} repaso${dueSkills === 1 ? '' : 's'} pendiente${dueSkills === 1 ? '' : 's'}`);
+      hint.textContent = parts.length ? `Incluirá: ${parts.join(' · ')}` : 'Sesión inteligente a tu medida';
+    }
+    // Estadísticas rápidas: hoy, medallas y dominio
+    const quickStats = document.getElementById('home-quick-stats');
+    if (quickStats) {
+      quickStats.innerHTML = '';
+      const accToday = dailyStats.totalQuestions > 0 ? Math.round((dailyStats.totalCorrect / dailyStats.totalQuestions) * 100) : null;
+      const items = [
+        { label: 'acierto hoy', value: accToday === null ? '—' : `${accToday}%` },
+        { label: 'medallas', value: `🏅 ${countMedals()}/12` },
+        { label: 'dominio tablas', value: `${Math.round(calculateProgress())}%` },
+      ];
+      items.forEach(({ label, value }) => {
+        const stat = document.createElement('div');
+        stat.className = 'quick-stat';
+        const strong = document.createElement('strong');
+        strong.textContent = value;
+        const span = document.createElement('span');
+        span.textContent = label;
+        stat.appendChild(strong);
+        stat.appendChild(span);
+        quickStats.appendChild(stat);
+      });
+    }
+    // Próximo reto de niveles
+    const challenge = document.getElementById('next-challenge-card');
+    if (challenge) {
+      challenge.innerHTML = '';
+      const level = findNextChallenge();
+      if (!level) {
+        challenge.classList.add('hidden');
+      } else {
+        challenge.classList.remove('hidden');
+        const title = document.createElement('h3');
+        title.className = 'section-head';
+        const progress = levelProgress[level.id];
+        title.textContent = `${level.emoji} Tu próximo reto`;
+        const desc = document.createElement('p');
+        desc.className = 'section-desc';
+        desc.textContent = progress && progress.medal
+          ? `Nivel ${level.id} · ${level.title}: ya tienes ${progress.medal === 'silver' ? 'plata' : 'bronce'}, ve a por el oro.`
+          : `Nivel ${level.id} · ${level.title}: supera al jefe para ganar tu medalla.`;
+        const btn = document.createElement('button');
+        btn.className = 'primary-btn';
+        btn.textContent = `⚔️ Jefe del nivel ${level.id}`;
+        btn.addEventListener('click', () => {
+          startLevelSession(level.id, 'boss');
+        });
+        challenge.appendChild(title);
+        challenge.appendChild(desc);
+        challenge.appendChild(btn);
+      }
+    }
+  }
+
+  /** Pestaña Entrenar: refrescar contadores de errores y niveles. */
+  function renderTrainTab() {
+    updateErrorsBadge();
+    const today = getTodayDate();
+    const errorCount = (errorsToday[today] || []).filter((key) => parseProblemKey(key)).length;
+    const errorsDesc = document.getElementById('train-errors-desc');
+    if (errorsDesc) {
+      errorsDesc.textContent =
+        errorCount > 0
+          ? `Tienes ${errorCount} combinación${errorCount === 1 ? '' : 'es'} fallada${errorCount === 1 ? '' : 's'} hoy esperando revancha.`
+          : 'Sin errores pendientes hoy. ¡Sigue así!';
+    }
+    const medalsBadge = document.getElementById('train-levels-medals');
+    if (medalsBadge) {
+      medalsBadge.textContent = `🏅 ${countMedals()}/12`;
+    }
+    const levelsDesc = document.getElementById('train-levels-desc');
+    if (levelsDesc) {
+      const next = findNextChallenge();
+      levelsDesc.textContent = next
+        ? `Siguiente objetivo: nivel ${next.id} · ${next.title}.`
+        : '¡Corona conseguida! Mantén tus medallas de oro relucientes.';
+    }
+    // Sincronizar el constructor con la configuración vigente
+    try {
+      fillConfigInputs(getActiveOperation());
+      updateHomeOperationToggle();
+    } catch (e) {
+      /* sin configuración aún */
+    }
+  }
+
+  /** Biblioteca de técnicas en Aprender (se construye una sola vez). */
+  let techLibraryBuilt = false;
+  function renderTechLibrary() {
+    if (techLibraryBuilt) return;
+    const container = document.getElementById('tech-library');
+    const LevelsMod = getLevelsModule();
+    if (!container || !LevelsMod) return;
+    LevelsMod.LEVELS.forEach((level) => {
+      if (!Array.isArray(level.techniques) || !level.techniques.length) return;
+      const group = document.createElement('div');
+      group.className = 'tech-group';
+      const heading = document.createElement('h4');
+      heading.textContent = `${level.emoji} ${level.title}`;
+      group.appendChild(heading);
+      level.techniques.forEach((tech) => {
+        const row = document.createElement('div');
+        row.className = 'level-tech-row';
+        const info = document.createElement('button');
+        info.type = 'button';
+        info.className = 'level-tech-info';
+        info.textContent = `📖 ${tech.name}`;
+        info.addEventListener('click', () => {
+          openModal(tech.name, tech.steps);
+        });
+        const practice = document.createElement('button');
+        practice.type = 'button';
+        practice.className = 'level-tech-practice';
+        practice.textContent = 'Practicar';
+        practice.addEventListener('click', () => {
+          startLevelSession(level.id, 'practice', tech.id);
+        });
+        row.appendChild(info);
+        row.appendChild(practice);
+        group.appendChild(row);
+      });
+      container.appendChild(group);
+    });
+    techLibraryBuilt = true;
+  }
+
+  /** Perfil: medallas, racha, totales e indicador de dominio. */
+  function renderProfile() {
+    const summary = document.getElementById('profile-summary');
+    const LevelsMod = getLevelsModule();
+    if (summary) {
+      summary.innerHTML = '';
+      const title = document.createElement('h3');
+      title.className = 'section-head';
+      title.textContent = '🏅 Tu recorrido';
+      summary.appendChild(title);
+      // Galería de medallas de los 12 niveles
+      if (LevelsMod) {
+        const gallery = document.createElement('div');
+        gallery.className = 'medal-gallery';
+        LevelsMod.LEVELS.forEach((level) => {
+          const cell = document.createElement('div');
+          cell.className = 'medal-cell';
+          const progress = levelProgress[level.id];
+          const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
+          const medal = progress && progress.medal;
+          cell.textContent = medal ? { bronze: '🥉', silver: '🥈', gold: '🥇' }[medal] : unlocked ? level.emoji : '🔒';
+          cell.title = `Nivel ${level.id} · ${level.title}${medal ? ` — ${MEDAL_LABELS[medal]}` : unlocked ? ' — sin medalla aún' : ' — bloqueado'}`;
+          if (!medal) cell.classList.add('pending');
+          gallery.appendChild(cell);
+        });
+        summary.appendChild(gallery);
+      }
+      // Totales del historial del motor (últimos 120 días)
+      const engine = getAdaptiveEngine();
+      const rows = [];
+      const streak = computeStreakDays();
+      rows.push(['Racha actual', streak === 1 ? '1 día' : `${streak} días`]);
+      rows.push(['Medallas', `${countMedals()} de 12`]);
+      if (engine && adaptiveState) {
+        const history = adaptiveState.history || {};
+        let total = 0;
+        let correct = 0;
+        let bestDay = 0;
+        Object.keys(history).forEach((day) => {
+          total += history[day].q || 0;
+          correct += history[day].ok || 0;
+          bestDay = Math.max(bestDay, history[day].q || 0);
+        });
+        rows.push(['Ejercicios (últimos 120 días)', String(total)]);
+        if (total > 0) rows.push(['Acierto medio', `${Math.round((correct / total) * 100)}%`]);
+        if (bestDay > 0) rows.push(['Mejor día', `${bestDay} ejercicios`]);
+      }
+      const list = document.createElement('div');
+      list.className = 'profile-rows';
+      rows.forEach(([label, value]) => {
+        const row = document.createElement('p');
+        const strong = document.createElement('strong');
+        strong.textContent = value;
+        row.textContent = `${label}: `;
+        row.appendChild(strong);
+        list.appendChild(row);
+      });
+      summary.appendChild(list);
+    }
+    updateProgressBar();
+    const modeLabel = document.getElementById('progress-mode-label');
+    if (modeLabel) {
+      modeLabel.textContent =
+        getActiveOperation() === 'multiplication'
+          ? 'Multiplicación · cambia el modo en Entrenar'
+          : 'División · cambia el modo en Entrenar';
+    }
+  }
+
+  /**
+   * Sesión inteligente: los errores de hoy primero y el resto se rellena
+   * con el generador adaptativo (que ya prioriza repasos vencidos y
+   * habilidades débiles). Un toque desde Inicio y a practicar.
+   */
+  function startSmartSession() {
+    const today = getTodayDate();
+    const errorProblems = (errorsToday[today] || [])
+      .map((key) => parseProblemKey(key))
+      .filter(Boolean)
+      .slice(0, 5);
+    const { numQuestions } = getActiveModeConfig();
+    const adaptive = generateProblems();
+    const list = [];
+    const seen = new Set();
+    errorProblems.concat(adaptive).forEach((problem) => {
+      if (list.length >= numQuestions) return;
+      const key = createProblemKey(problem);
+      if (seen.has(key)) return;
+      seen.add(key);
+      list.push(Object.assign({}, problem));
+    });
+    // Si faltan ejercicios (pocas combinaciones distintas), completar con repeticiones
+    for (let i = 0; list.length < numQuestions && adaptive.length > 0; i++) {
+      list.push(Object.assign({}, adaptive[i % adaptive.length]));
+    }
+    if (!list.length) return;
+    levelSession = null;
+    currentSpecificSelection = null;
+    configureTrainingSession(TRAINING_CONTEXT.GENERAL);
+    trainProblems = list;
+    trainIndex = 0;
+    trainCorrectCount = 0;
+    trainTypedAnswer = '';
+    trainScoreDiv.textContent = '';
+    trainRestartBtn.classList.add('hidden');
+    showScreen('training');
+    renderTrainingProblem();
+  }
+
   function showProgressScreen() {
     // Asegurarnos de que la configuración esté cargada antes de generar el mapa de calor
     try {
@@ -1880,7 +2201,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error al construir la pantalla de progreso', e);
     }
     // Siempre mostramos la pantalla de progreso aunque haya fallos de construcción
-    showScreen('progress');
+    showScreen('analysis');
   }
 
   /**
@@ -2096,11 +2417,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Guardar configuración leída del formulario y volver a inicio.
+   * Guardar la configuración leída del constructor de sesiones.
+   * Devuelve true si los valores son válidos y quedaron persistidos.
    */
   function saveConfig() {
-    // Leer valores
-    let selectedOperation = 'multiplication';
+    // El modo lo marca el conmutador ×/÷ del constructor (los antiguos
+    // radios ya no existen, pero se respetan si estuvieran presentes).
+    let selectedOperation = getActiveOperation();
     operationRadios.forEach((radio) => {
       if (radio.checked) selectedOperation = radio.value;
     });
@@ -2117,15 +2440,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isNaN(minVal) || isNaN(maxVal) || minVal <= 0 || maxVal < minVal) {
       showToast('Ingresa un intervalo de cifras válido.', 'error');
-      return;
+      return false;
     }
     if (maxVal > MAX_INTERVAL_VALUE) {
       showToast(`El intervalo máximo permitido es ${MAX_INTERVAL_VALUE}.`, 'error');
-      return;
+      return false;
     }
     if (isNaN(secondsVal) || secondsVal <= 0 || secondsVal > MAX_SECONDS) {
       showToast(`Ingresa un tiempo válido (1 a ${MAX_SECONDS} segundos).`, 'error');
-      return;
+      return false;
     }
 
     setActiveOperation(selectedOperation);
@@ -2138,9 +2461,9 @@ document.addEventListener('DOMContentLoaded', () => {
     config.activeOperation = selectedOperation;
     localStorage.setItem('config', JSON.stringify(config));
     fillConfigInputs(selectedOperation);
-    // Actualizar botones de operación en inicio
+    // Actualizar el conmutador de operación del constructor
     updateHomeOperationToggle();
-    showScreen('home');
+    return true;
   }
 
   /**
@@ -2220,16 +2543,40 @@ document.addEventListener('DOMContentLoaded', () => {
       scr.setAttribute('tabindex', '-1');
       scr.focus({ preventScroll: true });
     }
-    if (screenName === 'home') {
-      updateProgressBar();
-      updateErrorsBadge();
-      // Construir panel de asistente cuando se muestra la pantalla de inicio
-      try {
-        renderAssistantPanel();
-      } catch (e) {
-        console.error('Error al renderizar asistente', e);
-      }
+    // Seguir la pestaña activa y activar el modo enfoque en las sesiones
+    if (TAB_SCREENS.includes(screenName)) {
+      currentTab = screenName;
+    } else if (SUBSCREEN_TAB[screenName]) {
+      currentTab = SUBSCREEN_TAB[screenName];
     }
+    const focusMode = screenName === 'learning' || screenName === 'training';
+    document.body.classList.toggle('focus-mode', focusMode);
+    updateTabBar();
+
+    // Preparar el contenido de cada pestaña al mostrarla
+    try {
+      if (screenName === 'home') {
+        loadDailyStats();
+        renderHomeDashboard();
+        updateErrorsBadge();
+        renderAssistantPanel();
+      } else if (screenName === 'train') {
+        renderTrainTab();
+      } else if (screenName === 'learn') {
+        renderTechLibrary();
+      } else if (screenName === 'profile') {
+        renderProfile();
+      }
+    } catch (e) {
+      console.error('Error al preparar la pantalla', screenName, e);
+    }
+  }
+
+  /** Resaltar en la barra de pestañas la sección activa. */
+  function updateTabBar() {
+    document.querySelectorAll('#tab-bar .tab-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.tab === currentTab);
+    });
   }
 
   /**
@@ -2940,10 +3287,10 @@ document.addEventListener('DOMContentLoaded', () => {
       learnIndex++;
       renderLearningProblem();
     } else {
-      // Mostrar resumen y volver a inicio tras una pausa
+      // Mostrar resumen y volver a la pestaña de origen tras una pausa
       setFeedback(learnFeedbackDiv, `Respuestas correctas: ${learnCorrectCount} de ${total}`);
       scheduleUITimeout(() => {
-        showScreen('home');
+        showScreen(currentTab);
       }, 2000);
     }
   }
@@ -3917,26 +4264,42 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     updateProgressBar();
-    // Navegación desde la pantalla de inicio
-    homeSettingsBtn.addEventListener('click', () => {
-      loadConfig();
-      showScreen('config');
+    // Barra de pestañas: navegación principal
+    document.querySelectorAll('#tab-bar .tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        if (tab === 'analysis') {
+          showProgressScreen();
+        } else {
+          showScreen(tab);
+        }
+      });
     });
-    homeLearnBtn.addEventListener('click', () => {
-      startLearningSession();
+    // Sesión inteligente (Inicio y Entrenar)
+    ['smart-session-btn', 'smart-session-btn-train'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          startSmartSession();
+        });
+      }
     });
-    homeTrainBtn.addEventListener('click', () => {
-      startTrainingSession();
-    });
+    if (homeLearnBtn) {
+      homeLearnBtn.addEventListener('click', () => {
+        startLearningSession();
+      });
+    }
     if (homeErrorsBtn) {
       homeErrorsBtn.addEventListener('click', () => {
         startErrorsSession();
       });
     }
-    homeTablesBtn.addEventListener('click', () => {
-      showTablesScreen();
-    });
-    // Pantalla de niveles de cálculo mental
+    if (homeTablesBtn) {
+      homeTablesBtn.addEventListener('click', () => {
+        showTablesScreen();
+      });
+    }
+    // Mapa de niveles (desde Entrenar)
     const homeLevelsBtn = document.getElementById('home-levels-btn');
     if (homeLevelsBtn) {
       homeLevelsBtn.addEventListener('click', () => {
@@ -3946,20 +4309,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const levelsBackBtn = document.getElementById('levels-back-btn');
     if (levelsBackBtn) {
       levelsBackBtn.addEventListener('click', () => {
-        showScreen('home');
+        showScreen('train');
       });
     }
-
-    // Botón para mostrar pantalla de progreso
-    if (homeProgressBtn) {
-      homeProgressBtn.addEventListener('click', () => {
-        showProgressScreen();
+    // Constructor de sesiones: guarda la configuración y arranca
+    const builderStartBtn = document.getElementById('builder-start-btn');
+    if (builderStartBtn) {
+      builderStartBtn.addEventListener('click', () => {
+        if (saveConfig()) {
+          startTrainingSession();
+        }
       });
     }
-    if (homeProgressShortcut) {
-      homeProgressShortcut.addEventListener('click', () => {
-        showProgressScreen();
-      });
+    // Fichas de "una tabla concreta"
+    const tableChips = document.getElementById('table-chips');
+    if (tableChips) {
+      for (let n = 1; n <= 12; n++) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'table-chip';
+        chip.textContent = n;
+        chip.setAttribute('aria-label', `Entrenar la tabla del ${n}`);
+        chip.addEventListener('click', () => {
+          startSpecificRowTraining(n);
+        });
+        tableChips.appendChild(chip);
+      }
     }
 
     operationRadios.forEach((radio) => {
@@ -3970,26 +4345,25 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Botones de operación en la pantalla de inicio
-    homeOpMulBtn.addEventListener('click', () => {
-      setActiveOperation('multiplication');
-      localStorage.setItem('config', JSON.stringify(config));
-      updateHomeOperationToggle();
-      updateProgressBar();
-    });
-    homeOpDivBtn.addEventListener('click', () => {
-      setActiveOperation('division');
-      localStorage.setItem('config', JSON.stringify(config));
-      updateHomeOperationToggle();
-      updateProgressBar();
-    });
-    // Botones de configuración
-    configBackBtn.addEventListener('click', () => {
-      showScreen('home');
-    });
-    configSaveBtn.addEventListener('click', () => {
-      saveConfig();
-    });
+    // Conmutador de operación del constructor (cambia el modo global)
+    if (homeOpMulBtn) {
+      homeOpMulBtn.addEventListener('click', () => {
+        setActiveOperation('multiplication');
+        localStorage.setItem('config', JSON.stringify(config));
+        updateHomeOperationToggle();
+        fillConfigInputs('multiplication');
+        updateProgressBar();
+      });
+    }
+    if (homeOpDivBtn) {
+      homeOpDivBtn.addEventListener('click', () => {
+        setActiveOperation('division');
+        localStorage.setItem('config', JSON.stringify(config));
+        updateHomeOperationToggle();
+        fillConfigInputs('division');
+        updateProgressBar();
+      });
+    }
 
     // Reiniciar progreso
     resetProgressBtn.addEventListener('click', () => {
@@ -4014,28 +4388,22 @@ document.addEventListener('DOMContentLoaded', () => {
       scheduleAssistantPanelRefresh();
       showToast('Progreso eliminado', 'success');
     });
-    // Botones de regreso en aprendizaje, entrenamiento y tablas
+    // Botones de salida del modo enfoque: vuelven a la pestaña de origen
     learnBackBtn.addEventListener('click', () => {
       if (trainTimer) {
         clearInterval(trainTimer);
       }
-      showScreen('home');
+      showScreen(currentTab);
     });
     trainBackBtn.addEventListener('click', () => {
       if (trainTimer) {
         clearInterval(trainTimer);
       }
-      showScreen('home');
+      showScreen(currentTab);
     });
     tablesBackBtn.addEventListener('click', () => {
-      showScreen('home');
+      showScreen('learn');
     });
-    // Botón de regreso en la pantalla de progreso
-    if (progressBackBtn) {
-      progressBackBtn.addEventListener('click', () => {
-        showScreen('home');
-      });
-    }
 
     // Botón para saltar problemas escritos (mostrar respuesta y avanzar)
     if (learnSkipBtn) {
