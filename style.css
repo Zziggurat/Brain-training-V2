@@ -1166,6 +1166,11 @@ body.focus-mode .scroll {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Sin barra visible, los toasts vuelven a su altura natural */
+body.focus-mode #toast-container {
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
 /* Título de cada pestaña */
 .tab-title {
   width: 100%;
@@ -2068,7 +2073,7 @@ body.focus-mode .scroll {
 /* --- Notificaciones tipo toast --- */
 #toast-container {
   position: fixed;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(24px + var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
