@@ -463,6 +463,8 @@ button:disabled {
 
 #assistant-panel {
   width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
   max-height: min(280px, 40vh);
   padding: clamp(16px, 3vw, 22px);
   background: var(--card-bg);
@@ -1086,6 +1088,464 @@ input[type="checkbox"] {
   font-size: 14px;
 }
 
+/* ------------------------------------------------------------
+   Navegación por pestañas + estructura de secciones (v3)
+   ------------------------------------------------------------ */
+:root {
+  --tabbar-height: 64px;
+}
+
+/* La barra vive fija al pie, por encima de las safe areas */
+.tab-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  width: min(calc(100% - 24px), 560px);
+  height: var(--tabbar-height);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 24px;
+  background: rgba(9, 14, 25, 0.82);
+  border: 1px solid var(--glass-highlight);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 24px 54px rgba(3, 5, 10, 0.65);
+  z-index: 40;
+}
+
+.tab-btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 18px;
+  background: transparent;
+  color: rgba(244, 247, 255, 0.62);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tab-btn .tab-ico {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tab-btn .tab-lbl {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.tab-btn.active {
+  background: rgba(37, 117, 252, 0.22);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(116, 170, 255, 0.35);
+}
+
+/* Hueco inferior para que el contenido nunca quede bajo la barra */
+.scroll {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--tabbar-height) + 22px);
+}
+
+/* Modo enfoque (sesiones): sin barra y sin hueco extra */
+body.focus-mode .tab-bar {
+  display: none;
+}
+
+body.focus-mode .scroll {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Sin barra visible, los toasts vuelven a su altura natural */
+body.focus-mode #toast-container {
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Título de cada pestaña */
+.tab-title {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: clamp(26px, 6vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, #f4f7ff 30%, #9cc2ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tab-screen {
+  gap: clamp(16px, 3vh, 24px);
+  align-items: center;
+}
+
+.tab-screen.active {
+  gap: clamp(16px, 3vh, 24px);
+}
+
+/* Tarjeta de sección genérica (Entrenar/Aprender/Perfil) */
+.section-card {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 26px;
+  padding: 18px 20px 20px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 26px 54px rgba(5, 7, 13, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-head {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.section-badge {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  background: rgba(9, 14, 25, 0.7);
+  border: 1px solid var(--glass-highlight);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.section-desc {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.primary-btn {
+  width: 100%;
+  border-radius: 22px;
+  padding: clamp(13px, 3vw, 17px);
+  font-size: clamp(15px, 2.4vw, 18px);
+  font-weight: 700;
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 8px 20px var(--primary-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.primary-btn:active {
+  transform: scale(0.98) translateY(1px);
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.primary-btn.ghost-btn {
+  background: rgba(9, 14, 25, 0.65);
+  border: 1px solid var(--glass-highlight);
+  box-shadow: 0 14px 30px rgba(5, 7, 13, 0.4);
+}
+
+/* --- Inicio: tarjeta héroe --- */
+.hero-card {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: clamp(28px, 6vw, var(--card-radius));
+  padding: clamp(22px, 5vw, 34px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 30px 80px rgba(5, 7, 13, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3.4vh, 24px);
+}
+
+.hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#home-title {
+  font-size: clamp(26px, 6vw, 38px);
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, #f4f7ff 30%, #9cc2ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.streak-chip {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 140, 60, 0.16);
+  border: 1px solid rgba(255, 170, 90, 0.4);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hero-main {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 4vw, 32px);
+}
+
+.goal-ring {
+  position: relative;
+  width: clamp(104px, 24vw, 132px);
+  height: clamp(104px, 24vw, 132px);
+  flex-shrink: 0;
+}
+
+.goal-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.goal-ring .ring-bg,
+.goal-ring .ring-fill {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.goal-ring .ring-bg {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+
+.goal-ring .ring-fill {
+  stroke: #2575fc;
+  filter: drop-shadow(0 0 6px var(--primary-glow));
+  transition: stroke-dashoffset 0.5s ease, stroke 0.3s ease;
+}
+
+.goal-ring .ring-fill.complete {
+  stroke: #2ecc71;
+  filter: drop-shadow(0 0 8px var(--success-glow));
+}
+
+.goal-ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.goal-ring-text strong {
+  font-size: clamp(18px, 4.4vw, 24px);
+  font-weight: 800;
+}
+
+.goal-ring-text span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hero-cta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#smart-session-btn {
+  width: 100%;
+  border-radius: 24px;
+  padding: clamp(16px, 3.6vw, 22px);
+  font-size: clamp(17px, 3vw, 21px);
+  font-weight: 800;
+  background: linear-gradient(135deg, #5a8dff 0%, #2575fc 55%, #7c3aed 130%);
+  color: #ffffff;
+  box-shadow: 0 12px 30px var(--primary-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+#smart-session-btn:active {
+  transform: scale(0.97) translateY(1px);
+}
+
+.hero-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quick-stat {
+  background: rgba(9, 14, 25, 0.6);
+  border: 1px solid var(--glass-highlight);
+  border-radius: 18px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.quick-stat strong {
+  font-size: clamp(15px, 3.4vw, 19px);
+  font-weight: 800;
+}
+
+.quick-stat span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.next-challenge {
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+/* --- Entrenar: constructor --- */
+.builder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px 16px;
+}
+
+.builder-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.builder-field.checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 400;
+}
+
+.table-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+}
+
+.table-chip {
+  min-height: 48px;
+  border-radius: 16px;
+  background: rgba(9, 14, 25, 0.65);
+  border: 1px solid var(--glass-highlight);
+  color: var(--text-color);
+  font-size: 18px;
+  font-weight: 700;
+  transition: transform 0.12s ease, border-color 0.2s ease;
+}
+
+.table-chip:active {
+  transform: translateY(1px) scale(0.97);
+  border-color: rgba(116, 170, 255, 0.5);
+}
+
+/* --- Aprender: biblioteca de técnicas --- */
+.tech-library {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tech-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tech-group h4 {
+  margin: 6px 0 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #7db4ff;
+}
+
+.learn-help-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 10px;
+}
+
+/* --- Perfil --- */
+.medal-gallery {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.medal-cell {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  background: rgba(9, 14, 25, 0.65);
+  border: 1px solid var(--glass-highlight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(20px, 5vw, 26px);
+}
+
+.medal-cell.pending {
+  opacity: 0.55;
+}
+
+.profile-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-rows p {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.profile-rows strong {
+  color: var(--text-color);
+}
+
 /* --- Mapa de niveles de cálculo mental --- */
 #levels-screen {
   gap: 20px;
@@ -1613,7 +2073,7 @@ input[type="checkbox"] {
 /* --- Notificaciones tipo toast --- */
 #toast-container {
   position: fixed;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(24px + var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -1827,7 +2287,17 @@ input[type="checkbox"] {
     --heatmap-cell-size: 48px;
   }
 
-  .home-card {
-    padding: 24px 18px;
+  .tab-bar {
+    width: calc(100% - 16px);
+    padding: 5px 3px;
+  }
+
+  .tab-btn {
+    font-size: 9.5px;
+    letter-spacing: 0;
+  }
+
+  .tab-btn .tab-ico {
+    font-size: 18px;
   }
 }
