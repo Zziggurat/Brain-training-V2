@@ -1720,6 +1720,64 @@ body.focus-mode #toast-container {
   min-height: 120px;
 }
 
+/* Barra de avance bajo cada nodo del sendero */
+.path-node-bar {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.path-node-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2575fc 0%, #7c3aed 100%);
+}
+
+.foundation-row {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dominio-both {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Cabecera del mapa de calor en Análisis */
+.analysis-heatmap-head {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto -8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.analysis-block-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.analysis-op-toggle {
+  margin: 0;
+  padding: 4px;
+  gap: 4px;
+}
+
+.analysis-op-toggle .op-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
 /* --- Mapa de niveles de cálculo mental --- */
 #levels-screen {
   gap: 20px;
@@ -1957,16 +2015,41 @@ body.focus-mode #toast-container {
   border-color: rgba(255, 179, 71, 0.55);
 }
 
+.analysis-summary {
+  margin: 0 0 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
 .analysis-bars {
   display: flex;
   align-items: flex-end;
   gap: clamp(3px, 0.8vw, 8px);
-  height: 72px;
+}
+
+.analysis-bar-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.analysis-bar-day {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.analysis-bar-day.today {
+  color: #7db4ff;
+  font-weight: 700;
 }
 
 .analysis-bar {
-  flex: 1;
-  height: 100%;
+  width: 100%;
+  height: 72px;
   display: flex;
   align-items: flex-end;
   border-radius: 6px;
@@ -1999,6 +2082,44 @@ body.focus-mode #toast-container {
   margin: 6px 0 0;
   font-size: 12px;
   color: var(--muted);
+}
+
+.analysis-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 10px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.legend-swatch.good {
+  background: #43d17a;
+}
+
+.legend-swatch.mid {
+  background: #ffb347;
+}
+
+.legend-swatch.low {
+  background: #ff7a6b;
+}
+
+.legend-swatch.empty {
+  background: rgba(244, 247, 255, 0.18);
 }
 
 /* --- Tablas --- */

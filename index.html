@@ -35,12 +35,12 @@
       background: #05070d;
     }
   </style>
-  <link rel="stylesheet" href="style.css?r=20260714-2" />
-  <link rel="stylesheet" href="custom.css?r=20260714-2" />
-  <script defer src="lib/problemWeight.js?r=20260714-2"></script>
-  <script defer src="lib/adaptiveEngine.js?r=20260714-2"></script>
-  <script defer src="lib/levels.js?r=20260714-2"></script>
-  <script defer src="script.js?r=20260714-2"></script>
+  <link rel="stylesheet" href="style.css?r=20260715-1" />
+  <link rel="stylesheet" href="custom.css?r=20260715-1" />
+  <script defer src="lib/problemWeight.js?r=20260715-1"></script>
+  <script defer src="lib/adaptiveEngine.js?r=20260715-1"></script>
+  <script defer src="lib/levels.js?r=20260715-1"></script>
+  <script defer src="script.js?r=20260715-1"></script>
 </head>
 
 <body>
@@ -110,9 +110,9 @@
             <label class="builder-field">
               <span id="interval-label">Intervalo de cifras</span>
               <div class="interval-inputs">
-                <input type="number" id="config-min" min="1" max="50" inputmode="numeric" value="1" aria-label="Cifra mínima">
+                <input type="number" id="config-min" min="1" max="30" inputmode="numeric" value="1" aria-label="Cifra mínima">
                 <span aria-hidden="true">a</span>
-                <input type="number" id="config-max" min="1" max="50" inputmode="numeric" value="10" aria-label="Cifra máxima">
+                <input type="number" id="config-max" min="1" max="30" inputmode="numeric" value="10" aria-label="Cifra máxima">
               </div>
             </label>
             <label class="builder-field">
@@ -165,6 +165,15 @@
         <h2 class="tab-title">Análisis</h2>
         <!-- Análisis del motor adaptativo: tendencia, fortalezas y debilidades -->
         <div id="analysis-card" class="analysis-card" aria-live="polite"></div>
+        <!-- Mapa de dominio de tablas, consultable en ambas operaciones -->
+        <div class="analysis-heatmap-head">
+          <h3 class="analysis-block-title">🧮 Dominio de tablas, celda a celda</h3>
+          <div id="analysis-op-toggle" class="operation-toggle analysis-op-toggle" role="group"
+            aria-label="Operación mostrada en el mapa de calor">
+            <button id="analysis-op-mul" class="op-btn active" aria-pressed="true" type="button">A × B</button>
+            <button id="analysis-op-div" class="op-btn" aria-pressed="false" type="button">A ÷ B</button>
+          </div>
+        </div>
         <div id="heatmap-container">
           <!-- El mapa de calor se generará dinámicamente aquí -->
         </div>
@@ -191,12 +200,29 @@
             <span id="progress-text">0%</span>
           </div>
           <p class="progress-label" id="progress-mode-label">Progreso del modo activo</p>
+          <div id="dominio-both" class="dominio-both"></div>
         </div>
         <div class="section-card">
           <h3 class="section-head">⚙️ Ajustes</h3>
-          <p class="section-desc">Todo tu progreso se guarda únicamente en este dispositivo.</p>
+          <div class="builder-grid">
+            <label class="builder-field">
+              <span>Meta diaria de ejercicios</span>
+              <input type="number" id="setting-daily-goal" min="5" max="1000" inputmode="numeric" value="15">
+            </label>
+            <label class="builder-field">
+              <span>Practicar hasta la tabla del…</span>
+              <select id="setting-table-max">
+                <option value="10">10</option>
+                <option value="12">12</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+              </select>
+            </label>
+          </div>
+          <p class="section-desc">Al reducir el rango de tablas, el progreso ya conseguido se conserva. Todo se guarda únicamente en este dispositivo.</p>
           <button id="reset-progress-btn" class="reset-btn">Eliminar progreso</button>
-          <footer class="version-tag" aria-label="Marcador de versión">Brain Training · v3.0</footer>
+          <footer class="version-tag" aria-label="Marcador de versión">Brain Training · v3.2</footer>
         </div>
       </div>
 

@@ -411,8 +411,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // Límites de personalización: tablas hasta el 30 como máximo y meta
+  // diaria libre entre 5 y 1000 ejercicios.
+  const TABLE_MAX_LIMIT = 30;
+  const DEFAULT_DAILY_GOAL = 15;
+  const DAILY_GOAL_MIN = 5;
+  const DAILY_GOAL_MAX = 1000;
+
   const defaultConfig = {
     activeOperation: 'multiplication',
+    dailyGoal: DEFAULT_DAILY_GOAL,
     modes: {
       multiplication: cloneModeSettings(),
       division: cloneModeSettings(),
@@ -422,11 +430,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function cloneDefaultConfig() {
     return {
       activeOperation: defaultConfig.activeOperation,
+      dailyGoal: defaultConfig.dailyGoal,
       modes: {
         multiplication: cloneModeSettings(defaultConfig.modes.multiplication),
         division: cloneModeSettings(defaultConfig.modes.division),
       },
     };
+  }
+
+  function normalizeDailyGoal(value) {
+    const parsed = Math.floor(Number(value));
+    if (!Number.isFinite(parsed)) return DEFAULT_DAILY_GOAL;
+    return Math.min(DAILY_GOAL_MAX, Math.max(DAILY_GOAL_MIN, parsed));
+  }
+
+  function getDailyGoal() {
+    return normalizeDailyGoal(config && config.dailyGoal);
   }
 
   function normalizeModeSettings(raw, fallback) {
@@ -436,8 +455,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const normalized = cloneModeSettings(raw);
     // Acotar a límites seguros: valores desmesurados congelan el mapa de calor
-    normalized.min = Math.min(50, Math.max(1, Math.floor(normalized.min)));
-    normalized.max = Math.min(50, Math.max(normalized.min, Math.floor(normalized.max)));
+    normalized.min = Math.min(TABLE_MAX_LIMIT, Math.max(1, Math.floor(normalized.min)));
+    normalized.max = Math.min(TABLE_MAX_LIMIT, Math.max(normalized.min, Math.floor(normalized.max)));
     normalized.numQuestions = Math.min(200, Math.max(1, Math.floor(normalized.numQuestions)));
     normalized.seconds = Math.min(600, Math.max(1, Math.floor(normalized.seconds)));
     return normalized;
@@ -453,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const active = raw.activeOperation === 'division' ? 'division' : 'multiplication';
       return {
         activeOperation: active,
+        dailyGoal: normalizeDailyGoal(raw.dailyGoal),
         modes: {
           multiplication: normalizeModeSettings(
             raw.modes.multiplication,
@@ -1168,9 +1188,11 @@ document.addEventListener('DOMContentLoaded', () => {
    * Se considera el número total de combinaciones en el intervalo y se asignan 5 estrellas máximas por combinación.
    * El progreso sólo se basa en el modo de operación actual.
    */
-  function calculateProgress() {
-    const { min, max } = getActiveModeConfig();
-    const operation = getActiveOperation();
+  function calculateProgress(operationOverride) {
+    const operation = operationOverride === 'division' || operationOverride === 'multiplication'
+      ? operationOverride
+      : getActiveOperation();
+    const { min, max } = getModeConfig(operation);
     const totalCombos = (max - min + 1) * (max - min + 1);
     const totalPossibleStars = totalCombos * 5;
     let earnedStars = 0;
@@ -1202,7 +1224,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ----- MÉTRICAS DIARIAS Y MAPA DE CALOR -----
   // Definir objetivo mínimo de ejercicios por día
-  const DAILY_GOAL = 15;
   // Estructura para estadísticas diarias
   let dailyStats = {
     date: '',
@@ -1317,13 +1338,46 @@ document.addEventListener('DOMContentLoaded', () => {
    * Muestra una cuadrícula de (max-min+1)×(max-min+1) donde cada celda
    * se colorea según las estrellas acumuladas (blanco, naranja, verde).
    */
+  // Operación que se está VIENDO en Análisis (independiente del modo
+  // global de práctica): permite consultar × y ÷ sin cambiar nada.
+  let analysisViewOperation = null;
+
+  function getAnalysisOperation() {
+    return analysisViewOperation || getActiveOperation();
+  }
+
+  /** Reflejar en los botones ×/÷ de Análisis la operación que se muestra. */
+  function updateAnalysisOpToggle() {
+    const op = getAnalysisOperation();
+    const mulBtn = document.getElementById('analysis-op-mul');
+    const divBtn = document.getElementById('analysis-op-div');
+    if (mulBtn) {
+      mulBtn.classList.toggle('active', op === 'multiplication');
+      mulBtn.setAttribute('aria-pressed', String(op === 'multiplication'));
+    }
+    if (divBtn) {
+      divBtn.classList.toggle('active', op === 'division');
+      divBtn.setAttribute('aria-pressed', String(op === 'division'));
+    }
+  }
+
+  /** Al entrenar desde el mapa de calor, alinear el modo global con la vista. */
+  function syncOperationWithAnalysisView() {
+    const viewOp = getAnalysisOperation();
+    if (viewOp !== getActiveOperation()) {
+      setActiveOperation(viewOp);
+      localStorage.setItem('config', JSON.stringify(config));
+      updateHomeOperationToggle();
+    }
+  }
+
   function buildHeatmap() {
     if (!heatmapContainer) return;
     heatmapContainer.innerHTML = '';
     heatmapContainer.scrollTop = 0;
     heatmapContainer.scrollLeft = 0;
-    const { min, max } = getActiveModeConfig();
-    const operation = getActiveOperation();
+    const operation = getAnalysisOperation();
+    const { min, max } = getModeConfig(operation);
     const size = max - min + 1;
     const grid = document.createElement('div');
     grid.className = 'heatmap-grid';
@@ -1394,12 +1448,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!target) return;
       if (target.classList.contains('column-header')) {
         const b = parseInt(target.dataset.col, 10);
-        if (Number.isFinite(b)) startSpecificColumnTraining(b);
+        if (Number.isFinite(b)) {
+          syncOperationWithAnalysisView();
+          startSpecificColumnTraining(b);
+        }
         return;
       }
       if (target.classList.contains('row-header')) {
         const a = parseInt(target.dataset.row, 10);
-        if (Number.isFinite(a)) startSpecificRowTraining(a);
+        if (Number.isFinite(a)) {
+          syncOperationWithAnalysisView();
+          startSpecificRowTraining(a);
+        }
         return;
       }
       if (target.classList.contains('heatmap-cell')) {
@@ -1692,24 +1752,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const title = document.createElement('h3');
     title.textContent = 'Meta diaria';
     goalCard.appendChild(title);
-    const container = document.createElement('div');
-    container.className = 'goal-circles';
+    const goal = getDailyGoal();
     // Número de ejercicios completados se basa en totalQuestions
-    const done = Math.min(dailyStats.totalQuestions, DAILY_GOAL);
-    for (let i = 0; i < DAILY_GOAL; i++) {
-      const circle = document.createElement('div');
-      circle.className = 'goal-circle';
-      if (i < done) {
-        circle.classList.add('completed');
+    const done = Math.min(dailyStats.totalQuestions, goal);
+    if (goal <= 30) {
+      // Metas pequeñas: círculos individuales, uno por ejercicio
+      const container = document.createElement('div');
+      container.className = 'goal-circles';
+      for (let i = 0; i < goal; i++) {
+        const circle = document.createElement('div');
+        circle.className = 'goal-circle';
+        if (i < done) {
+          circle.classList.add('completed');
+        }
+        container.appendChild(circle);
       }
-      container.appendChild(circle);
+      goalCard.appendChild(container);
+    } else {
+      // Metas ambiciosas: barra de progreso continua
+      const bar = document.createElement('div');
+      bar.className = 'mini-bar';
+      const fill = document.createElement('div');
+      fill.className = 'mini-bar-fill';
+      fill.style.width = `${Math.min(100, Math.round((done / goal) * 100))}%`;
+      bar.appendChild(fill);
+      goalCard.appendChild(bar);
     }
-    goalCard.appendChild(container);
     const summary = document.createElement('p');
     summary.textContent =
-      done >= DAILY_GOAL
+      done >= goal
         ? '¡Meta diaria cumplida! 🎉'
-        : `${done} de ${DAILY_GOAL} ejercicios hoy`;
+        : `${done} de ${goal} ejercicios hoy · ajústala en Perfil`;
     goalCard.appendChild(summary);
   }
 
@@ -1823,18 +1896,37 @@ document.addEventListener('DOMContentLoaded', () => {
     container.appendChild(section);
   }
 
-  /** Mini gráfico de barras CSS con la actividad de los últimos 14 días. */
+  /**
+   * Actividad de los últimos 14 días: cada barra es un día (cuanto más
+   * alta, más ejercicios) y su color indica la precisión de ese día.
+   */
   function renderHistoryBars(container, days) {
     if (!days || !days.length) return;
     const section = document.createElement('div');
     section.className = 'analysis-section';
     const h4 = document.createElement('h4');
-    h4.textContent = '📅 Últimos 14 días';
+    h4.textContent = '📅 Tu actividad, día a día (últimas 2 semanas)';
     section.appendChild(h4);
+
+    // Resumen del período: la conclusión primero, el gráfico después
+    const totalQ = days.reduce((sum, d) => sum + d.q, 0);
+    const totalOk = days.reduce((sum, d) => sum + d.ok, 0);
+    const activeDays = days.filter((d) => d.q > 0).length;
+    const intro = document.createElement('p');
+    intro.className = 'analysis-summary';
+    intro.textContent =
+      totalQ > 0
+        ? `Entrenaste ${activeDays} de 14 días: ${totalQ} ejercicios con un ${Math.round((totalOk / totalQ) * 100)}% de acierto.`
+        : 'Aún no hay actividad en las últimas dos semanas: cada día entrenado pintará aquí su barra.';
+    section.appendChild(intro);
+
     const bars = document.createElement('div');
     bars.className = 'analysis-bars';
     const maxQ = Math.max(1, ...days.map((d) => d.q));
-    days.forEach((d) => {
+    const WEEKDAYS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+    days.forEach((d, index) => {
+      const col = document.createElement('div');
+      col.className = 'analysis-bar-col';
       const bar = document.createElement('div');
       bar.className = 'analysis-bar';
       const fill = document.createElement('div');
@@ -1846,19 +1938,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const acc = d.ok / d.q;
         fill.classList.add(acc >= 0.85 ? 'good' : acc >= 0.6 ? 'mid' : 'low');
       }
-      const [, month, dayNum] = d.day.split('-');
+      const [year, month, dayNum] = d.day.split('-').map(Number);
+      const weekday = WEEKDAYS[new Date(year, month - 1, dayNum).getDay()];
       bar.title =
         d.q > 0
           ? `${dayNum}/${month}: ${d.q} ejercicios, ${Math.round((d.ok / d.q) * 100)}% de acierto`
           : `${dayNum}/${month}: sin actividad`;
       bar.appendChild(fill);
-      bars.appendChild(bar);
+      const dayLabel = document.createElement('span');
+      dayLabel.className = 'analysis-bar-day';
+      dayLabel.textContent = index === days.length - 1 ? 'hoy' : weekday;
+      if (index === days.length - 1) dayLabel.classList.add('today');
+      col.appendChild(bar);
+      col.appendChild(dayLabel);
+      bars.appendChild(col);
     });
     section.appendChild(bars);
-    const legend = document.createElement('p');
-    legend.className = 'analysis-legend';
-    legend.textContent = 'Altura = volumen de práctica · Color = precisión del día';
+
+    // Leyenda con muestras de color reales
+    const legend = document.createElement('div');
+    legend.className = 'analysis-legend-row';
+    [
+      ['good', 'buen día (≥85%)'],
+      ['mid', 'mejorable (60-84%)'],
+      ['low', 'día duro (<60%)'],
+      ['empty', 'sin actividad'],
+    ].forEach(([kind, text]) => {
+      const item = document.createElement('span');
+      item.className = 'legend-item';
+      const swatch = document.createElement('span');
+      swatch.className = `legend-swatch ${kind}`;
+      item.appendChild(swatch);
+      item.appendChild(document.createTextNode(text));
+      legend.appendChild(item);
+    });
     section.appendChild(legend);
+    const note = document.createElement('p');
+    note.className = 'analysis-legend';
+    note.textContent = 'La altura de cada barra es la cantidad de ejercicios de ese día.';
+    section.appendChild(note);
     container.appendChild(section);
   }
 
@@ -1904,6 +2022,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return Object.keys(levelProgress).filter((id) => levelProgress[id] && levelProgress[id].medal).length;
   }
 
+  /** Medallas del camino completo (incluye la etapa 0 de cimientos). */
+  function countPathMedals() {
+    return countMedals() + (foundationMedal() ? 1 : 0);
+  }
+
   /** Panel de Inicio: saludo, racha, anillo de meta diaria y próximo reto. */
   function renderHomeDashboard() {
     const greeting = document.getElementById('home-greeting');
@@ -1924,13 +2047,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const done = dailyStats.totalQuestions || 0;
     if (ringFill) {
       const circumference = 2 * Math.PI * 52;
-      const pct = Math.min(1, done / DAILY_GOAL);
+      const pct = Math.min(1, done / getDailyGoal());
       ringFill.style.strokeDasharray = `${circumference}`;
       ringFill.style.strokeDashoffset = `${circumference * (1 - pct)}`;
       ringFill.classList.toggle('complete', pct >= 1);
     }
     if (ringCount) {
-      ringCount.textContent = `${done}/${DAILY_GOAL}`;
+      ringCount.textContent = `${done}/${getDailyGoal()}`;
     }
     // Pista bajo los botones: qué contendrá la sesión inteligente
     const hint = document.getElementById('smart-session-hint');
@@ -1955,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const items = [
         { label: 'acierto hoy', value: accToday === null ? '—' : `${accToday}%` },
         { label: 'camino', value: `🛤️ ${pathProgressPercent()}%` },
-        { label: 'medallas', value: `🏅 ${countMedals()}/12` },
+        { label: 'medallas', value: `🏅 ${countPathMedals()}/13` },
       ];
       items.forEach(({ label, value }) => {
         const stat = document.createElement('div');
@@ -1985,11 +2108,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const desc = document.createElement('p');
         desc.className = 'section-desc';
         desc.textContent = progress && progress.medal
-          ? `Nivel ${level.id} · ${level.title}: ya tienes ${progress.medal === 'silver' ? 'plata' : 'bronce'}, ve a por el oro.`
-          : `Nivel ${level.id} · ${level.title}: supera al jefe para ganar tu medalla.`;
+          ? `Etapa ${level.id} · ${level.title}: ya tienes ${progress.medal === 'silver' ? 'plata' : 'bronce'}, ve a por el oro.`
+          : `Etapa ${level.id} · ${level.title}: supera el desafío para ganar tu medalla.`;
         const btn = document.createElement('button');
         btn.className = 'primary-btn';
-        btn.textContent = `⚔️ Jefe del nivel ${level.id}`;
+        btn.textContent = `⚔️ Desafío de la etapa ${level.id}`;
         btn.addEventListener('click', () => {
           startLevelSession(level.id, 'boss');
         });
@@ -2028,6 +2151,23 @@ document.addEventListener('DOMContentLoaded', () => {
       smartDesc.textContent = parts.length
         ? `Tu entrenador incluirá ahora: ${parts.join(' · ')} y variedad de todo lo desbloqueado.`
         : 'Tu entrenador personal: analiza todas tus habilidades y compone una tanda con lo que más te conviene ahora.';
+    }
+    // Fichas de "una tabla concreta": siguen la configuración del usuario
+    const tableChips = document.getElementById('table-chips');
+    if (tableChips) {
+      tableChips.innerHTML = '';
+      const chipMax = Math.min(TABLE_MAX_LIMIT, Math.max(getModeConfig('multiplication').max, getModeConfig('division').max));
+      for (let n = 1; n <= chipMax; n++) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'table-chip';
+        chip.textContent = n;
+        chip.setAttribute('aria-label', `Entrenar la tabla del ${n}`);
+        chip.addEventListener('click', () => {
+          startSpecificRowTraining(n);
+        });
+        tableChips.appendChild(chip);
+      }
     }
     // Sincronizar el constructor con la configuración vigente
     try {
@@ -2088,18 +2228,26 @@ document.addEventListener('DOMContentLoaded', () => {
       title.className = 'section-head';
       title.textContent = '🏅 Tu recorrido';
       summary.appendChild(title);
-      // Galería de medallas de los 12 niveles
+      // Galería de medallas de las 13 etapas del camino (0 = cimientos)
       if (LevelsMod) {
         const gallery = document.createElement('div');
         gallery.className = 'medal-gallery';
+        const medalIcon = { bronze: '🥉', silver: '🥈', gold: '🥇' };
+        const foundation = document.createElement('div');
+        foundation.className = 'medal-cell';
+        const fMedal = foundationMedal();
+        foundation.textContent = fMedal ? medalIcon[fMedal] : '🧮';
+        foundation.title = `Etapa 0 · Cimientos: las tablas${fMedal ? ` — ${MEDAL_LABELS[fMedal]}` : ' — sin medalla aún'}`;
+        if (!fMedal) foundation.classList.add('pending');
+        gallery.appendChild(foundation);
         LevelsMod.LEVELS.forEach((level) => {
           const cell = document.createElement('div');
           cell.className = 'medal-cell';
           const progress = levelProgress[level.id];
           const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
           const medal = progress && progress.medal;
-          cell.textContent = medal ? { bronze: '🥉', silver: '🥈', gold: '🥇' }[medal] : unlocked ? level.emoji : '🔒';
-          cell.title = `Nivel ${level.id} · ${level.title}${medal ? ` — ${MEDAL_LABELS[medal]}` : unlocked ? ' — sin medalla aún' : ' — bloqueado'}`;
+          cell.textContent = medal ? medalIcon[medal] : unlocked ? level.emoji : '🔒';
+          cell.title = `Etapa ${level.id} · ${level.title}${medal ? ` — ${MEDAL_LABELS[medal]}` : unlocked ? ' — sin medalla aún' : ' — bloqueada'}`;
           if (!medal) cell.classList.add('pending');
           gallery.appendChild(cell);
         });
@@ -2110,7 +2258,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const rows = [];
       const streak = computeStreakDays();
       rows.push(['Racha actual', streak === 1 ? '1 día' : `${streak} días`]);
-      rows.push(['Medallas', `${countMedals()} de 12`]);
+      rows.push(['Etapas con medalla', `${countPathMedals()} de 13`]);
+      rows.push(['Avance del camino', `${pathProgressPercent()}%`]);
       if (engine && adaptiveState) {
         const history = adaptiveState.history || {};
         let total = 0;
@@ -2142,8 +2291,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modeLabel) {
       modeLabel.textContent =
         getActiveOperation() === 'multiplication'
-          ? 'Multiplicación · cambia el modo en Entrenar'
-          : 'División · cambia el modo en Entrenar';
+          ? 'Modo activo: multiplicación · cambia el modo en Entrenar'
+          : 'Modo activo: división · cambia el modo en Entrenar';
+    }
+    // Dominio por operación: las divisiones tienen su propio progreso
+    const dominioBoth = document.getElementById('dominio-both');
+    if (dominioBoth) {
+      dominioBoth.innerHTML = '';
+      [
+        { op: 'multiplication', label: '× multiplicación' },
+        { op: 'division', label: '÷ división' },
+      ].forEach(({ op, label }) => {
+        const pct = Math.round(calculateProgress(op));
+        const row = document.createElement('p');
+        row.className = 'foundation-row';
+        row.textContent = `${label}: ${pct}%`;
+        const bar = document.createElement('div');
+        bar.className = 'mini-bar';
+        const fill = document.createElement('div');
+        fill.className = 'mini-bar-fill';
+        fill.style.width = `${pct}%`;
+        bar.appendChild(fill);
+        dominioBoth.appendChild(row);
+        dominioBoth.appendChild(bar);
+      });
+    }
+    // Reflejar los ajustes personales vigentes
+    const dailyGoalInput = document.getElementById('setting-daily-goal');
+    if (dailyGoalInput) dailyGoalInput.value = getDailyGoal();
+    const tableMaxSelect = document.getElementById('setting-table-max');
+    if (tableMaxSelect) {
+      const currentMax = Math.max(getModeConfig('multiplication').max, getModeConfig('division').max);
+      const options = Array.from(tableMaxSelect.options).map((o) => parseInt(o.value, 10));
+      const closest = options.reduce((best, v) => (Math.abs(v - currentMax) < Math.abs(best - currentMax) ? v : best), options[0]);
+      tableMaxSelect.value = String(options.includes(currentMax) ? currentMax : closest);
     }
   }
 
@@ -2173,6 +2354,59 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
     return skillPracticeMap;
+  }
+
+  /** Habilidades por etapa y por técnica (para tiers y progreso de etapa). */
+  let levelSkillsCache = null;
+  function getLevelSkillsInfo() {
+    if (levelSkillsCache) return levelSkillsCache;
+    const LevelsMod = getLevelsModule();
+    levelSkillsCache = { byLevel: {}, byTechnique: {} };
+    if (!LevelsMod) return levelSkillsCache;
+    LevelsMod.LEVELS.forEach((level) => {
+      const all = new Set();
+      (level.techniques || []).forEach((tech) => {
+        if (tech.id === 'blitz') return;
+        try {
+          const sample = tech.generate(LevelsMod.createRng(7), 2);
+          const skills = sample.skills || [];
+          levelSkillsCache.byTechnique[`${level.id}:${tech.id}`] = skills;
+          skills.forEach((s) => all.add(s));
+        } catch (err) {
+          /* generador defectuoso: se ignora */
+        }
+      });
+      levelSkillsCache.byLevel[level.id] = Array.from(all);
+    });
+    return levelSkillsCache;
+  }
+
+  /**
+   * Tramo de dificultad (1 principiante · 2 intermedio · 3 avanzado)
+   * según el rating del motor en esas habilidades. Sin evidencia
+   * suficiente se empieza suave: el siguiente reto siempre es alcanzable.
+   */
+  function tierForSkills(skillIds) {
+    const engine = getAdaptiveEngine();
+    if (!engine || !adaptiveState || !skillIds || !skillIds.length) return 1;
+    let sum = 0;
+    let n = 0;
+    skillIds.forEach((id) => {
+      const skill = adaptiveState.skills[id];
+      if (skill && skill.attempts >= 6) {
+        sum += skill.rating;
+        n++;
+      }
+    });
+    if (!n) return 1;
+    const avg = sum / n;
+    return avg >= 1230 ? 3 : avg >= 1080 ? 2 : 1;
+  }
+
+  /** Tramo global del usuario (para rellenos variados). */
+  function globalTier() {
+    if (!adaptiveState) return 1;
+    return tierForSkills(Object.keys(adaptiveState.skills));
   }
 
   /** Problemas de tabla para una habilidad mul.tN / div.tN del motor. */
@@ -2232,8 +2466,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapped = practiceMap[skill.id];
         if (mapped && LevelsMod && LevelsMod.isUnlocked(mapped.levelId, levelProgress)) {
           const rng = LevelsMod.createRng((Date.now() + skill.id.length * 7919) >>> 0);
-          push(mapped.generate(rng));
-          push(mapped.generate(rng));
+          const skillTier = tierForSkills([skill.id]);
+          push(mapped.generate(rng, skillTier));
+          push(mapped.generate(rng, skillTier));
         } else {
           tableProblemsForSkill(skill.id, 2).forEach(push);
         }
@@ -2257,16 +2492,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let adaptiveIdx = 0;
     let genIdx = 0;
     const fillRng = LevelsMod ? LevelsMod.createRng(Date.now() >>> 0) : null;
+    const fillTier = globalTier();
     while (list.length < numQuestions) {
       const useTechnique = freshGenerators.length > 0 && fillRng && list.length % 2 === 1;
       if (useTechnique) {
-        push(freshGenerators[genIdx % freshGenerators.length](fillRng));
+        push(freshGenerators[genIdx % freshGenerators.length](fillRng, fillTier));
         genIdx++;
       } else if (adaptive.length > 0) {
         push(adaptive[adaptiveIdx % adaptive.length]);
         adaptiveIdx++;
       } else if (freshGenerators.length > 0 && fillRng) {
-        push(freshGenerators[genIdx % freshGenerators.length](fillRng));
+        push(freshGenerators[genIdx % freshGenerators.length](fillRng, fillTier));
         genIdx++;
       } else {
         break;
@@ -2298,6 +2534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Construimos las métricas y el mapa de calor dentro de un bloque try/catch
     try {
       loadDailyStats();
+      updateAnalysisOpToggle();
       buildHeatmap();
       renderDailyMetrics();
       renderDailyGoal();
@@ -2541,7 +2778,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tope superior del intervalo: sin él, un valor muy alto (p. ej. 999)
     // genera cientos de miles de combinaciones y congela el mapa de calor.
-    const MAX_INTERVAL_VALUE = 50;
+    const MAX_INTERVAL_VALUE = TABLE_MAX_LIMIT;
     const MAX_SECONDS = 600;
 
     if (isNaN(minVal) || isNaN(maxVal) || minVal <= 0 || maxVal < minVal) {
@@ -3433,12 +3670,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const MEDAL_LABELS = { bronze: '🥉 Bronce', silver: '🥈 Plata', gold: '🥇 Oro' };
 
-  /** Iniciar práctica de técnica o jefe de nivel reutilizando el entrenamiento. */
+  /** Iniciar práctica de técnica o desafío de etapa reutilizando el entrenamiento. */
   function startLevelSession(levelId, kind, techniqueId = null) {
     const LevelsMod = getLevelsModule();
     if (!LevelsMod) return;
+    // Tramo de dificultad según el dominio del usuario en esas habilidades
+    const info = getLevelSkillsInfo();
+    const skills =
+      kind === 'boss'
+        ? info.byLevel[levelId]
+        : info.byTechnique[`${levelId}:${techniqueId}`] || info.byLevel[levelId];
+    const tier = tierForSkills(skills);
+    const rng = LevelsMod.createRng(Date.now() >>> 0);
     const problems =
-      kind === 'boss' ? LevelsMod.generateBoss(levelId) : LevelsMod.generatePractice(levelId, techniqueId, 10);
+      kind === 'boss'
+        ? LevelsMod.generateBoss(levelId, rng, tier)
+        : LevelsMod.generatePractice(levelId, techniqueId, 10, rng, tier);
     if (!problems.length) return;
     currentSpecificSelection = null;
     levelSession = { levelId, kind, techniqueId, results: [] };
@@ -3490,8 +3737,8 @@ document.addEventListener('DOMContentLoaded', () => {
           lastPlayed: Date.now(),
         };
         saveLevelProgress();
-        setFeedback(trainFeedbackDiv, `${MEDAL_LABELS[summary.medal]}: jefe del nivel ${session.levelId} superado.`, 'success');
-        showToast(`${MEDAL_LABELS[summary.medal]} — Nivel ${session.levelId}: ${level.title}`, 'success');
+        setFeedback(trainFeedbackDiv, `${MEDAL_LABELS[summary.medal]}: desafío de la etapa ${session.levelId} superado.`, 'success');
+        showToast(`${MEDAL_LABELS[summary.medal]} — Etapa ${session.levelId}: ${level.title}`, 'success');
       } else {
         levelProgress[session.levelId] = Object.assign({}, prev, {
           attempts: (prev.attempts || 0) + 1,
@@ -3521,12 +3768,43 @@ document.addEventListener('DOMContentLoaded', () => {
   const FOUNDATION_THRESHOLDS = { bronze: 40, silver: 70, gold: 95 };
   let selectedPathNode = null;
 
+  /** Dominio combinado de la etapa 0: media de multiplicación y división. */
+  function foundationProgress() {
+    return (calculateProgress('multiplication') + calculateProgress('division')) / 2;
+  }
+
   function foundationMedal() {
-    const pct = calculateProgress();
+    const pct = foundationProgress();
     if (pct >= FOUNDATION_THRESHOLDS.gold) return 'gold';
     if (pct >= FOUNDATION_THRESHOLDS.silver) return 'silver';
     if (pct >= FOUNDATION_THRESHOLDS.bronze) return 'bronze';
     return null;
+  }
+
+  /**
+   * Progreso estimado dentro de una etapa (0-100): la medalla marca el
+   * nivel alcanzado (🥉50 · 🥈75 · 🥇100) y, sin medalla, se estima por
+   * la evidencia de técnicas ya trabajadas (hasta un 40%).
+   */
+  function pathStageProgress(id) {
+    const state = pathNodeState(id);
+    if (id === 0) {
+      return Math.round(foundationProgress());
+    }
+    if (state.medal === 'gold') return 100;
+    if (state.medal === 'silver') return 75;
+    if (state.medal === 'bronze') return 50;
+    if (!state.unlocked) return 0;
+    const engine = getAdaptiveEngine();
+    const info = getLevelSkillsInfo();
+    const skills = info.byLevel[id] || [];
+    if (!engine || !adaptiveState || !skills.length) return 0;
+    let worked = 0;
+    skills.forEach((skillId) => {
+      const s = adaptiveState.skills[skillId];
+      if (s && s.attempts >= 6 && engine.accuracyOf(s) >= 0.6) worked++;
+    });
+    return Math.round((worked / skills.length) * 40);
   }
 
   /** Estado de una etapa del camino (0 = cimientos, 1-12 = niveles). */
@@ -3618,6 +3896,15 @@ document.addEventListener('DOMContentLoaded', () => {
       label.textContent = id === 0 ? 'Cimientos' : `${id}`;
       node.appendChild(face);
       node.appendChild(label);
+      // Barra de avance de la etapa: el progreso, visible de un vistazo
+      const stagePct = state.unlocked ? pathStageProgress(id) : 0;
+      const nodeBar = document.createElement('span');
+      nodeBar.className = 'path-node-bar';
+      const nodeFill = document.createElement('span');
+      nodeFill.className = 'path-node-bar-fill';
+      nodeFill.style.width = `${stagePct}%`;
+      nodeBar.appendChild(nodeFill);
+      node.appendChild(nodeBar);
       node.title = id === 0 ? 'Etapa 0 · Cimientos: las tablas' : level ? `Etapa ${id} · ${level.title}` : `Etapa ${id}`;
       node.addEventListener('click', () => {
         selectedPathNode = id;
@@ -3653,29 +3940,51 @@ document.addEventListener('DOMContentLoaded', () => {
       detail.appendChild(title);
       const desc = document.createElement('p');
       desc.className = 'section-desc';
-      const pct = Math.round(calculateProgress());
-      desc.textContent = `Multiplicaciones y divisiones automáticas: la base de todo el camino. Dominio actual: ${pct}% (🥉 ${FOUNDATION_THRESHOLDS.bronze}% · 🥈 ${FOUNDATION_THRESHOLDS.silver}% · 🥇 ${FOUNDATION_THRESHOLDS.gold}%).`;
+      desc.textContent = `Multiplicaciones y divisiones automáticas: la base de todo el camino. La medalla se gana con la media de ambos dominios (🥉 ${FOUNDATION_THRESHOLDS.bronze}% · 🥈 ${FOUNDATION_THRESHOLDS.silver}% · 🥇 ${FOUNDATION_THRESHOLDS.gold}%).`;
       detail.appendChild(desc);
-      const bar = document.createElement('div');
-      bar.className = 'mini-bar';
-      const fill = document.createElement('div');
-      fill.className = 'mini-bar-fill';
-      fill.style.width = `${pct}%`;
-      bar.appendChild(fill);
-      detail.appendChild(bar);
-      const learnBtn = document.createElement('button');
-      learnBtn.className = 'primary-btn';
-      learnBtn.textContent = '🎓 Aprendizaje guiado';
-      learnBtn.addEventListener('click', () => {
-        startLearningSession();
+      // Dominio por operación: dos barras gemelas
+      [
+        { op: 'multiplication', label: 'Multiplicación (A × B)' },
+        { op: 'division', label: 'División (A ÷ B)' },
+      ].forEach(({ op, label }) => {
+        const pct = Math.round(calculateProgress(op));
+        const row = document.createElement('p');
+        row.className = 'foundation-row';
+        row.textContent = `${label}: ${pct}%`;
+        const bar = document.createElement('div');
+        bar.className = 'mini-bar';
+        const fill = document.createElement('div');
+        fill.className = 'mini-bar-fill';
+        fill.style.width = `${pct}%`;
+        bar.appendChild(fill);
+        detail.appendChild(row);
+        detail.appendChild(bar);
       });
+      // Aprendizaje guiado por operación: mismo recorrido, dos frentes
+      const startGuided = (op) => {
+        if (getActiveOperation() !== op) {
+          setActiveOperation(op);
+          localStorage.setItem('config', JSON.stringify(config));
+          updateHomeOperationToggle();
+        }
+        startLearningSession();
+      };
+      const learnMulBtn = document.createElement('button');
+      learnMulBtn.className = 'primary-btn';
+      learnMulBtn.textContent = '🎓 Aprender multiplicaciones';
+      learnMulBtn.addEventListener('click', () => startGuided('multiplication'));
+      const learnDivBtn = document.createElement('button');
+      learnDivBtn.className = 'primary-btn';
+      learnDivBtn.textContent = '🎓 Aprender divisiones';
+      learnDivBtn.addEventListener('click', () => startGuided('division'));
       const tablesBtn = document.createElement('button');
       tablesBtn.className = 'primary-btn ghost-btn';
       tablesBtn.textContent = '🧮 Ver las tablas';
       tablesBtn.addEventListener('click', () => {
         showTablesScreen();
       });
-      detail.appendChild(learnBtn);
+      detail.appendChild(learnMulBtn);
+      detail.appendChild(learnDivBtn);
       detail.appendChild(tablesBtn);
       return;
     }
@@ -3689,6 +3998,24 @@ document.addEventListener('DOMContentLoaded', () => {
     desc.className = 'section-desc';
     desc.textContent = level.tagline;
     detail.appendChild(desc);
+
+    // Avance de la etapa, siempre visible
+    if (state.unlocked) {
+      const stagePct = pathStageProgress(id);
+      const progressRow = document.createElement('p');
+      progressRow.className = 'foundation-row';
+      progressRow.textContent = state.medal
+        ? `Progreso de la etapa: ${stagePct}%${state.medal === 'gold' ? ' · ¡completada!' : ' · sube de medalla para avanzar más'}`
+        : `Progreso de la etapa: ${stagePct}% · gana una medalla en el desafío para consolidarla`;
+      const stageBar = document.createElement('div');
+      stageBar.className = 'mini-bar';
+      const stageFill = document.createElement('div');
+      stageFill.className = 'mini-bar-fill';
+      stageFill.style.width = `${stagePct}%`;
+      stageBar.appendChild(stageFill);
+      detail.appendChild(progressRow);
+      detail.appendChild(stageBar);
+    }
 
     if (!state.unlocked) {
       const note = document.createElement('p');
@@ -4552,6 +4879,23 @@ document.addEventListener('DOMContentLoaded', () => {
         showTablesScreen();
       });
     }
+    // Conmutador ×/÷ del mapa de calor en Análisis (solo cambia la vista)
+    const analysisOpMul = document.getElementById('analysis-op-mul');
+    const analysisOpDiv = document.getElementById('analysis-op-div');
+    if (analysisOpMul) {
+      analysisOpMul.addEventListener('click', () => {
+        analysisViewOperation = 'multiplication';
+        updateAnalysisOpToggle();
+        buildHeatmap();
+      });
+    }
+    if (analysisOpDiv) {
+      analysisOpDiv.addEventListener('click', () => {
+        analysisViewOperation = 'division';
+        updateAnalysisOpToggle();
+        buildHeatmap();
+      });
+    }
     // Continuar el camino: abre la pestaña Camino en la etapa actual
     const continuePathBtn = document.getElementById('continue-path-btn');
     if (continuePathBtn) {
@@ -4569,20 +4913,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     }
-    // Fichas de "una tabla concreta"
-    const tableChips = document.getElementById('table-chips');
-    if (tableChips) {
-      for (let n = 1; n <= 12; n++) {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'table-chip';
-        chip.textContent = n;
-        chip.setAttribute('aria-label', `Entrenar la tabla del ${n}`);
-        chip.addEventListener('click', () => {
-          startSpecificRowTraining(n);
-        });
-        tableChips.appendChild(chip);
-      }
+    // Ajustes de personalización en Perfil
+    const dailyGoalInput = document.getElementById('setting-daily-goal');
+    if (dailyGoalInput) {
+      dailyGoalInput.addEventListener('change', () => {
+        config.dailyGoal = normalizeDailyGoal(dailyGoalInput.value);
+        dailyGoalInput.value = config.dailyGoal;
+        localStorage.setItem('config', JSON.stringify(config));
+        showToast(`Meta diaria: ${config.dailyGoal} ejercicios`, 'success');
+      });
+    }
+    const tableMaxSelect = document.getElementById('setting-table-max');
+    if (tableMaxSelect) {
+      tableMaxSelect.addEventListener('change', () => {
+        const value = Math.min(TABLE_MAX_LIMIT, Math.max(5, parseInt(tableMaxSelect.value, 10) || 10));
+        // Se aplica a ambos modos; el progreso previo nunca se borra:
+        // al reducir el rango, las estrellas fuera de él quedan guardadas.
+        getModeConfig('multiplication').max = value;
+        getModeConfig('division').max = value;
+        localStorage.setItem('config', JSON.stringify(config));
+        fillConfigInputs(getActiveOperation());
+        updateProgressBar();
+        renderProfile();
+        showToast(`Practicarás hasta la tabla del ${value}`, 'success');
+      });
     }
 
     operationRadios.forEach((radio) => {
