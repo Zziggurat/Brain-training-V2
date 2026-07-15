@@ -16,12 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     learning: document.getElementById('learning-screen'),
     training: document.getElementById('training-screen'),
     tables: document.getElementById('tables-screen'),
-    levels: document.getElementById('levels-screen'),
   };
 
   // Pestañas de la barra de navegación y pestaña "madre" de cada subpantalla
   const TAB_SCREENS = ['home', 'train', 'learn', 'analysis', 'profile'];
-  const SUBSCREEN_TAB = { tables: 'learn', levels: 'train' };
+  const SUBSCREEN_TAB = { tables: 'learn' };
   let currentTab = 'home';
 
   // Botones en la pantalla de inicio
@@ -1933,7 +1932,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ringCount) {
       ringCount.textContent = `${done}/${DAILY_GOAL}`;
     }
-    // Pista bajo el botón de entrenar: qué contendrá la sesión inteligente
+    // Pista bajo los botones: qué contendrá la sesión inteligente
     const hint = document.getElementById('smart-session-hint');
     if (hint) {
       const today = getTodayDate();
@@ -1946,17 +1945,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const parts = [];
       if (errorCount > 0) parts.push(`${errorCount} error${errorCount === 1 ? '' : 'es'} de hoy`);
       if (dueSkills > 0) parts.push(`${dueSkills} repaso${dueSkills === 1 ? '' : 's'} pendiente${dueSkills === 1 ? '' : 's'}`);
-      hint.textContent = parts.length ? `Incluirá: ${parts.join(' · ')}` : 'Sesión inteligente a tu medida';
+      hint.textContent = parts.length ? `El entrenador incluirá: ${parts.join(' · ')}` : 'Tu entrenador personal global';
     }
-    // Estadísticas rápidas: hoy, medallas y dominio
+    // Estadísticas rápidas: hoy, camino y racha de etapas
     const quickStats = document.getElementById('home-quick-stats');
     if (quickStats) {
       quickStats.innerHTML = '';
       const accToday = dailyStats.totalQuestions > 0 ? Math.round((dailyStats.totalCorrect / dailyStats.totalQuestions) * 100) : null;
       const items = [
         { label: 'acierto hoy', value: accToday === null ? '—' : `${accToday}%` },
+        { label: 'camino', value: `🛤️ ${pathProgressPercent()}%` },
         { label: 'medallas', value: `🏅 ${countMedals()}/12` },
-        { label: 'dominio tablas', value: `${Math.round(calculateProgress())}%` },
       ];
       items.forEach(({ label, value }) => {
         const stat = document.createElement('div');
@@ -2013,16 +2012,22 @@ document.addEventListener('DOMContentLoaded', () => {
           ? `Tienes ${errorCount} combinación${errorCount === 1 ? '' : 'es'} fallada${errorCount === 1 ? '' : 's'} hoy esperando revancha.`
           : 'Sin errores pendientes hoy. ¡Sigue así!';
     }
-    const medalsBadge = document.getElementById('train-levels-medals');
-    if (medalsBadge) {
-      medalsBadge.textContent = `🏅 ${countMedals()}/12`;
-    }
-    const levelsDesc = document.getElementById('train-levels-desc');
-    if (levelsDesc) {
-      const next = findNextChallenge();
-      levelsDesc.textContent = next
-        ? `Siguiente objetivo: nivel ${next.id} · ${next.title}.`
-        : '¡Corona conseguida! Mantén tus medallas de oro relucientes.';
+    // Detallar qué compondrá la sesión inteligente ahora mismo
+    const smartDesc = document.getElementById('smart-session-desc');
+    if (smartDesc) {
+      const engine = getAdaptiveEngine();
+      const parts = [];
+      if (errorCount > 0) parts.push(`${errorCount} error${errorCount === 1 ? '' : 'es'} de hoy`);
+      if (engine && adaptiveState) {
+        const analysis = engine.analyze(adaptiveState, { now: Date.now() });
+        if (analysis.review.length) parts.push(`${analysis.review.length} repaso${analysis.review.length === 1 ? '' : 's'} vencido${analysis.review.length === 1 ? '' : 's'}`);
+        if (analysis.weaknesses.length) {
+          parts.push(`refuerzo de ${analysis.weaknesses[0].label.toLowerCase()}`);
+        }
+      }
+      smartDesc.textContent = parts.length
+        ? `Tu entrenador incluirá ahora: ${parts.join(' · ')} y variedad de todo lo desbloqueado.`
+        : 'Tu entrenador personal: analiza todas tus habilidades y compone una tanda con lo que más te conviene ahora.';
     }
     // Sincronizar el constructor con la configuración vigente
     try {
@@ -2143,35 +2148,136 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Sesión inteligente: los errores de hoy primero y el resto se rellena
-   * con el generador adaptativo (que ya prioriza repasos vencidos y
-   * habilidades débiles). Un toque desde Inicio y a practicar.
+   * Mapa habilidad → técnica practicable. Se construye una vez a partir
+   * de los generadores de los niveles (cada técnica declara sus skills).
+   */
+  let skillPracticeMap = null;
+  function getSkillPracticeMap() {
+    if (skillPracticeMap) return skillPracticeMap;
+    const LevelsMod = getLevelsModule();
+    skillPracticeMap = {};
+    if (!LevelsMod) return skillPracticeMap;
+    LevelsMod.LEVELS.forEach((level) => {
+      (level.techniques || []).forEach((tech) => {
+        if (tech.id === 'blitz') return;
+        try {
+          const sample = tech.generate(LevelsMod.createRng(7));
+          (sample.skills || []).forEach((skillId) => {
+            if (!skillPracticeMap[skillId]) {
+              skillPracticeMap[skillId] = { levelId: level.id, generate: tech.generate };
+            }
+          });
+        } catch (err) {
+          /* generador defectuoso: se ignora */
+        }
+      });
+    });
+    return skillPracticeMap;
+  }
+
+  /** Problemas de tabla para una habilidad mul.tN / div.tN del motor. */
+  function tableProblemsForSkill(skillId, count) {
+    const match = /^(mul|div)\.t(\d+)$/.exec(skillId);
+    if (!match) return [];
+    const table = parseInt(match[2], 10);
+    const { min, max } = getActiveModeConfig();
+    const problems = [];
+    for (let i = 0; i < count; i++) {
+      const b = randomInt(min, max);
+      if (match[1] === 'mul') {
+        problems.push({ type: 'multiplication', a: table, b, answer: table * b });
+      } else {
+        problems.push({ type: 'division', dividend: table * b, divisor: table, answer: b });
+      }
+    }
+    return problems;
+  }
+
+  /**
+   * Sesión inteligente global: el entrenador personal. Analiza TODAS las
+   * habilidades (tablas y técnicas de los niveles ya desbloqueados) y
+   * compone la tanda con: errores de tablas de hoy → habilidades con
+   * repaso vencido → debilidades → variedad de todo lo desbloqueado.
+   * Corre en contexto LEVEL: fallar no corta la sesión.
    */
   function startSmartSession() {
+    const LevelsMod = getLevelsModule();
+    const engine = getAdaptiveEngine();
+    const { numQuestions } = getActiveModeConfig();
     const today = getTodayDate();
-    const errorProblems = (errorsToday[today] || [])
+    const list = [];
+    const push = (problem) => {
+      if (problem && list.length < numQuestions) list.push(Object.assign({}, problem));
+    };
+
+    // 1) Errores de tablas de hoy (revancha inmediata)
+    (errorsToday[today] || [])
       .map((key) => parseProblemKey(key))
       .filter(Boolean)
-      .slice(0, 5);
-    const { numQuestions } = getActiveModeConfig();
+      .slice(0, 4)
+      .forEach(push);
+
+    // 2) Habilidades vencidas y débiles según el análisis global
+    if (engine && adaptiveState) {
+      const analysis = engine.analyze(adaptiveState, { now: Date.now() });
+      const seen = new Set();
+      const targets = analysis.review.concat(analysis.weaknesses).filter((s) => {
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+      const practiceMap = getSkillPracticeMap();
+      targets.forEach((skill) => {
+        if (list.length >= numQuestions - 2) return;
+        const mapped = practiceMap[skill.id];
+        if (mapped && LevelsMod && LevelsMod.isUnlocked(mapped.levelId, levelProgress)) {
+          const rng = LevelsMod.createRng((Date.now() + skill.id.length * 7919) >>> 0);
+          push(mapped.generate(rng));
+          push(mapped.generate(rng));
+        } else {
+          tableProblemsForSkill(skill.id, 2).forEach(push);
+        }
+      });
+    }
+
+    // 3) Variedad: rellenar alternando tablas adaptativas y técnicas de
+    //    los niveles con medalla (lo desbloqueado se mantiene fresco)
     const adaptive = generateProblems();
-    const list = [];
-    const seen = new Set();
-    errorProblems.concat(adaptive).forEach((problem) => {
-      if (list.length >= numQuestions) return;
-      const key = createProblemKey(problem);
-      if (seen.has(key)) return;
-      seen.add(key);
-      list.push(Object.assign({}, problem));
-    });
-    // Si faltan ejercicios (pocas combinaciones distintas), completar con repeticiones
-    for (let i = 0; list.length < numQuestions && adaptive.length > 0; i++) {
-      list.push(Object.assign({}, adaptive[i % adaptive.length]));
+    const freshGenerators = [];
+    if (LevelsMod) {
+      LevelsMod.LEVELS.forEach((level) => {
+        if (!Array.isArray(level.techniques)) return;
+        if (levelProgress[level.id] && levelProgress[level.id].medal) {
+          level.techniques.forEach((tech) => {
+            if (tech.id !== 'blitz') freshGenerators.push(tech.generate);
+          });
+        }
+      });
+    }
+    let adaptiveIdx = 0;
+    let genIdx = 0;
+    const fillRng = LevelsMod ? LevelsMod.createRng(Date.now() >>> 0) : null;
+    while (list.length < numQuestions) {
+      const useTechnique = freshGenerators.length > 0 && fillRng && list.length % 2 === 1;
+      if (useTechnique) {
+        push(freshGenerators[genIdx % freshGenerators.length](fillRng));
+        genIdx++;
+      } else if (adaptive.length > 0) {
+        push(adaptive[adaptiveIdx % adaptive.length]);
+        adaptiveIdx++;
+      } else if (freshGenerators.length > 0 && fillRng) {
+        push(freshGenerators[genIdx % freshGenerators.length](fillRng));
+        genIdx++;
+      } else {
+        break;
+      }
     }
     if (!list.length) return;
-    levelSession = null;
+
+    // Contexto LEVEL con tipo "smart": los fallos no terminan la sesión
     currentSpecificSelection = null;
-    configureTrainingSession(TRAINING_CONTEXT.GENERAL);
+    levelSession = { levelId: 0, kind: 'smart', techniqueId: null, results: [] };
+    configureTrainingSession(TRAINING_CONTEXT.LEVEL);
     trainProblems = list;
     trainIndex = 0;
     trainCorrectCount = 0;
@@ -2562,8 +2668,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAssistantPanel();
       } else if (screenName === 'train') {
         renderTrainTab();
-      } else if (screenName === 'learn') {
         renderTechLibrary();
+      } else if (screenName === 'learn') {
+        renderPath();
       } else if (screenName === 'profile') {
         renderProfile();
       }
@@ -3351,6 +3458,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const LevelsMod = getLevelsModule();
     const session = levelSession;
     if (!LevelsMod || !session) return;
+    if (session.kind === 'smart') {
+      // Sesión inteligente: resumen del entrenador, sin medallas en juego
+      const smartSummary = LevelsMod.evaluateBoss(session.results);
+      const smartAcc = Math.round(smartSummary.accuracy * 100);
+      const smartAvg = smartSummary.avgMs > 0 ? ` · ${(smartSummary.avgMs / 1000).toFixed(1)} s por ítem` : '';
+      trainScoreDiv.textContent = `Aciertos: ${smartSummary.correct} de ${smartSummary.total} (${smartAcc}%${smartAvg})`;
+      setFeedback(
+        trainFeedbackDiv,
+        smartAcc >= 85
+          ? '💪 Sesión inteligente completada: tu entrenador está satisfecho.'
+          : 'Sesión completada. Lo fallado volverá a aparecer: así se entrena.',
+        smartAcc >= 85 ? 'success' : 'neutral'
+      );
+      trainRestartBtn.classList.remove('hidden');
+      return;
+    }
     const level = LevelsMod.getLevel(session.levelId);
     const summary = LevelsMod.evaluateBoss(session.results, level && level.criteria ? level.criteria : undefined);
     const accPct = Math.round(summary.accuracy * 100);
@@ -3391,109 +3514,238 @@ document.addEventListener('DOMContentLoaded', () => {
     trainRestartBtn.classList.remove('hidden');
   }
 
-  /** Construir el mapa de niveles. */
-  function renderLevelsMap() {
-    const container = document.getElementById('levels-map');
-    const LevelsMod = getLevelsModule();
-    if (!container || !LevelsMod) return;
-    container.innerHTML = '';
-    LevelsMod.LEVELS.forEach((level) => {
-      const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
-      const playable = Array.isArray(level.techniques) && level.techniques.length > 0;
-      const progress = levelProgress[level.id] || null;
+  // ----- EL CAMINO: recorrido oficial de 13 etapas -----
+  // Etapa 0 = Cimientos (tablas, medida por el dominio de estrellas);
+  // etapas 1-12 = los niveles de cálculo mental con sus medallas.
 
-      const card = document.createElement('div');
-      card.className = 'level-card';
-      if (!unlocked) card.classList.add('locked');
+  const FOUNDATION_THRESHOLDS = { bronze: 40, silver: 70, gold: 95 };
+  let selectedPathNode = null;
 
-      const head = document.createElement('div');
-      head.className = 'level-head';
-      const badge = document.createElement('span');
-      badge.className = 'level-num';
-      badge.textContent = unlocked ? level.emoji : '🔒';
-      head.appendChild(badge);
-      const titles = document.createElement('div');
-      titles.className = 'level-titles';
-      const h3 = document.createElement('h3');
-      h3.textContent = `Nivel ${level.id} · ${level.title}`;
-      const tagline = document.createElement('p');
-      tagline.textContent = level.tagline;
-      titles.appendChild(h3);
-      titles.appendChild(tagline);
-      head.appendChild(titles);
-      const medal = document.createElement('span');
-      medal.className = 'level-medal';
-      medal.textContent = progress && progress.medal ? MEDAL_LABELS[progress.medal].split(' ')[0] : '';
-      head.appendChild(medal);
-      card.appendChild(head);
-
-      if (!unlocked) {
-        const note = document.createElement('p');
-        note.className = 'level-note';
-        note.textContent = 'Consigue una medalla en el nivel anterior para desbloquearlo.';
-        card.appendChild(note);
-      } else if (!playable) {
-        const note = document.createElement('p');
-        note.className = 'level-note';
-        note.textContent = '🚧 En construcción: llegará en una próxima actualización.';
-        card.appendChild(note);
-      } else {
-        const list = document.createElement('div');
-        list.className = 'level-techniques';
-        level.techniques.forEach((tech) => {
-          const row = document.createElement('div');
-          row.className = 'level-tech-row';
-          const info = document.createElement('button');
-          info.className = 'level-tech-info';
-          info.type = 'button';
-          info.textContent = `📖 ${tech.name}`;
-          info.setAttribute('aria-label', `Ver explicación de ${tech.name}`);
-          info.addEventListener('click', () => {
-            openModal(tech.name, tech.steps);
-          });
-          const practice = document.createElement('button');
-          practice.className = 'level-tech-practice';
-          practice.type = 'button';
-          practice.textContent = 'Practicar';
-          practice.addEventListener('click', () => {
-            startLevelSession(level.id, 'practice', tech.id);
-          });
-          row.appendChild(info);
-          row.appendChild(practice);
-          list.appendChild(row);
-        });
-        card.appendChild(list);
-
-        const bossBtn = document.createElement('button');
-        bossBtn.className = 'level-boss-btn';
-        bossBtn.type = 'button';
-        bossBtn.textContent = `⚔️ Jefe de nivel (${level.bossCount} ejercicios)`;
-        bossBtn.addEventListener('click', () => {
-          startLevelSession(level.id, 'boss');
-        });
-        card.appendChild(bossBtn);
-
-        const criteria = document.createElement('p');
-        criteria.className = 'level-criteria';
-        const c = level.criteria;
-        criteria.textContent = `🥇 ${Math.round(c.gold.acc * 100)}% y ≤${(c.gold.avgMs / 1000).toFixed(1)} s · 🥈 ${Math.round(c.silver.acc * 100)}% y ≤${(c.silver.avgMs / 1000).toFixed(1)} s · 🥉 ${Math.round(c.bronze.acc * 100)}%`;
-        card.appendChild(criteria);
-
-        if (progress && progress.bestAcc) {
-          const best = document.createElement('p');
-          best.className = 'level-note';
-          const bestAvg = progress.bestAvgMs > 0 ? ` · mejor ritmo ${(progress.bestAvgMs / 1000).toFixed(1)} s` : '';
-          best.textContent = `Mejor marca: ${Math.round(progress.bestAcc * 100)}%${bestAvg}`;
-          card.appendChild(best);
-        }
-      }
-      container.appendChild(card);
-    });
+  function foundationMedal() {
+    const pct = calculateProgress();
+    if (pct >= FOUNDATION_THRESHOLDS.gold) return 'gold';
+    if (pct >= FOUNDATION_THRESHOLDS.silver) return 'silver';
+    if (pct >= FOUNDATION_THRESHOLDS.bronze) return 'bronze';
+    return null;
   }
 
-  function showLevelsScreen() {
-    renderLevelsMap();
-    showScreen('levels');
+  /** Estado de una etapa del camino (0 = cimientos, 1-12 = niveles). */
+  function pathNodeState(id) {
+    if (id === 0) {
+      return { unlocked: true, medal: foundationMedal() };
+    }
+    const LevelsMod = getLevelsModule();
+    const unlocked = LevelsMod ? LevelsMod.isUnlocked(id, levelProgress) : false;
+    return { unlocked, medal: (levelProgress[id] && levelProgress[id].medal) || null };
+  }
+
+  /** Avance global del camino: puntos de medalla sobre el máximo (13×3). */
+  function pathProgressPercent() {
+    const points = { bronze: 1, silver: 2, gold: 3 };
+    let total = 0;
+    for (let id = 0; id <= 12; id++) {
+      total += points[pathNodeState(id).medal] || 0;
+    }
+    return Math.round((total / 39) * 100);
+  }
+
+  /** Etapa "actual": primera desbloqueada sin medalla; si no, sin oro. */
+  function currentPathNode() {
+    for (let id = 0; id <= 12; id++) {
+      const s = pathNodeState(id);
+      if (s.unlocked && !s.medal) return id;
+    }
+    for (let id = 0; id <= 12; id++) {
+      const s = pathNodeState(id);
+      if (s.unlocked && s.medal !== 'gold') return id;
+    }
+    return 12;
+  }
+
+  function renderPath() {
+    if (selectedPathNode === null) selectedPathNode = currentPathNode();
+    renderPathSummary();
+    renderPathMap();
+    renderPathDetail(selectedPathNode);
+  }
+
+  function renderPathSummary() {
+    const summary = document.getElementById('path-summary');
+    if (!summary) return;
+    summary.innerHTML = '';
+    let withMedal = 0;
+    for (let id = 0; id <= 12; id++) {
+      if (pathNodeState(id).medal) withMedal++;
+    }
+    const pct = pathProgressPercent();
+    const text = document.createElement('p');
+    text.className = 'path-summary-text';
+    text.innerHTML = '';
+    text.textContent = `🏅 ${withMedal}/13 etapas con medalla · camino al ${pct}%`;
+    const bar = document.createElement('div');
+    bar.className = 'mini-bar';
+    const fill = document.createElement('div');
+    fill.className = 'mini-bar-fill';
+    fill.style.width = `${pct}%`;
+    bar.appendChild(fill);
+    summary.appendChild(text);
+    summary.appendChild(bar);
+  }
+
+  function renderPathMap() {
+    const map = document.getElementById('path-map');
+    const LevelsMod = getLevelsModule();
+    if (!map) return;
+    map.innerHTML = '';
+    const medalIcon = { bronze: '🥉', silver: '🥈', gold: '🥇' };
+    const current = currentPathNode();
+    for (let id = 0; id <= 12; id++) {
+      const state = pathNodeState(id);
+      const level = id === 0 ? null : LevelsMod && LevelsMod.getLevel(id);
+      const node = document.createElement('button');
+      node.type = 'button';
+      node.className = 'path-node';
+      node.setAttribute('role', 'listitem');
+      if (!state.unlocked) node.classList.add('locked');
+      if (state.medal) node.classList.add(`medal-${state.medal}`);
+      if (id === current) node.classList.add('current');
+      if (id === selectedPathNode) node.classList.add('selected');
+      const face = document.createElement('span');
+      face.className = 'path-node-face';
+      face.textContent = state.medal ? medalIcon[state.medal] : !state.unlocked ? '🔒' : id === 0 ? '🧮' : level ? level.emoji : '·';
+      const label = document.createElement('span');
+      label.className = 'path-node-label';
+      label.textContent = id === 0 ? 'Cimientos' : `${id}`;
+      node.appendChild(face);
+      node.appendChild(label);
+      node.title = id === 0 ? 'Etapa 0 · Cimientos: las tablas' : level ? `Etapa ${id} · ${level.title}` : `Etapa ${id}`;
+      node.addEventListener('click', () => {
+        selectedPathNode = id;
+        renderPathMap();
+        renderPathDetail(id);
+      });
+      map.appendChild(node);
+    }
+    // Llevar la etapa seleccionada a la vista en pantallas estrechas
+    const selected = map.querySelector('.path-node.selected');
+    if (selected && typeof selected.scrollIntoView === 'function') {
+      selected.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+  }
+
+  function renderPathDetail(id) {
+    const detail = document.getElementById('path-detail');
+    const LevelsMod = getLevelsModule();
+    if (!detail) return;
+    detail.innerHTML = '';
+    const state = pathNodeState(id);
+    const medalIcon = { bronze: '🥉 Bronce', silver: '🥈 Plata', gold: '🥇 Oro' };
+
+    const title = document.createElement('h3');
+    title.className = 'section-head';
+    const medalBadge = document.createElement('span');
+    medalBadge.className = 'section-badge';
+    medalBadge.textContent = state.medal ? medalIcon[state.medal] : state.unlocked ? 'Sin medalla' : 'Bloqueada';
+
+    if (id === 0) {
+      title.textContent = '🧮 Etapa 0 · Cimientos: las tablas';
+      title.appendChild(medalBadge);
+      detail.appendChild(title);
+      const desc = document.createElement('p');
+      desc.className = 'section-desc';
+      const pct = Math.round(calculateProgress());
+      desc.textContent = `Multiplicaciones y divisiones automáticas: la base de todo el camino. Dominio actual: ${pct}% (🥉 ${FOUNDATION_THRESHOLDS.bronze}% · 🥈 ${FOUNDATION_THRESHOLDS.silver}% · 🥇 ${FOUNDATION_THRESHOLDS.gold}%).`;
+      detail.appendChild(desc);
+      const bar = document.createElement('div');
+      bar.className = 'mini-bar';
+      const fill = document.createElement('div');
+      fill.className = 'mini-bar-fill';
+      fill.style.width = `${pct}%`;
+      bar.appendChild(fill);
+      detail.appendChild(bar);
+      const learnBtn = document.createElement('button');
+      learnBtn.className = 'primary-btn';
+      learnBtn.textContent = '🎓 Aprendizaje guiado';
+      learnBtn.addEventListener('click', () => {
+        startLearningSession();
+      });
+      const tablesBtn = document.createElement('button');
+      tablesBtn.className = 'primary-btn ghost-btn';
+      tablesBtn.textContent = '🧮 Ver las tablas';
+      tablesBtn.addEventListener('click', () => {
+        showTablesScreen();
+      });
+      detail.appendChild(learnBtn);
+      detail.appendChild(tablesBtn);
+      return;
+    }
+
+    const level = LevelsMod ? LevelsMod.getLevel(id) : null;
+    if (!level) return;
+    title.textContent = `${level.emoji} Etapa ${id} · ${level.title}`;
+    title.appendChild(medalBadge);
+    detail.appendChild(title);
+    const desc = document.createElement('p');
+    desc.className = 'section-desc';
+    desc.textContent = level.tagline;
+    detail.appendChild(desc);
+
+    if (!state.unlocked) {
+      const note = document.createElement('p');
+      note.className = 'level-note';
+      note.textContent = 'Consigue una medalla en la etapa anterior para desbloquear esta.';
+      detail.appendChild(note);
+      return;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'level-techniques';
+    level.techniques.forEach((tech) => {
+      const row = document.createElement('div');
+      row.className = 'level-tech-row';
+      const info = document.createElement('button');
+      info.className = 'level-tech-info';
+      info.type = 'button';
+      info.textContent = `📖 ${tech.name}`;
+      info.addEventListener('click', () => {
+        openModal(tech.name, tech.steps);
+      });
+      const practice = document.createElement('button');
+      practice.className = 'level-tech-practice';
+      practice.type = 'button';
+      practice.textContent = 'Practicar';
+      practice.addEventListener('click', () => {
+        startLevelSession(level.id, 'practice', tech.id);
+      });
+      row.appendChild(info);
+      row.appendChild(practice);
+      list.appendChild(row);
+    });
+    detail.appendChild(list);
+
+    const bossBtn = document.createElement('button');
+    bossBtn.className = 'level-boss-btn';
+    bossBtn.type = 'button';
+    bossBtn.textContent = `⚔️ Desafío de etapa (${level.bossCount} ejercicios)`;
+    bossBtn.addEventListener('click', () => {
+      startLevelSession(level.id, 'boss');
+    });
+    detail.appendChild(bossBtn);
+
+    const criteria = document.createElement('p');
+    criteria.className = 'level-criteria';
+    const c = level.criteria;
+    criteria.textContent = `🥇 ${Math.round(c.gold.acc * 100)}% y ≤${(c.gold.avgMs / 1000).toFixed(1)} s · 🥈 ${Math.round(c.silver.acc * 100)}% y ≤${(c.silver.avgMs / 1000).toFixed(1)} s · 🥉 ${Math.round(c.bronze.acc * 100)}%`;
+    detail.appendChild(criteria);
+
+    const progress = levelProgress[id];
+    if (progress && progress.bestAcc) {
+      const best = document.createElement('p');
+      best.className = 'level-note';
+      const bestAvg = progress.bestAvgMs > 0 ? ` · mejor ritmo ${(progress.bestAvgMs / 1000).toFixed(1)} s` : '';
+      best.textContent = `Mejor marca: ${Math.round(progress.bestAcc * 100)}%${bestAvg}`;
+      detail.appendChild(best);
+    }
   }
 
   function startTrainingSession() {
@@ -3515,9 +3767,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderTrainingProblem() {
     const problem = trainProblems[trainIndex];
-    // Los problemas de nivel traen su propio enunciado y se responden
+    // Los problemas de nivel y las sesiones inteligentes se responden
     // siempre con el teclado numérico (mide pensamiento, no suerte).
-    const multipleChoice = getActiveModeConfig().multipleChoice && !problem.prompt;
+    const multipleChoice =
+      getActiveModeConfig().multipleChoice && !problem.prompt && trainingSessionContext !== TRAINING_CONTEXT.LEVEL;
     // Mostrar progreso basado en la longitud actual de la lista de problemas
     trainProgressSpan.textContent = `${trainIndex + 1}/${trainProblems.length}`;
     if (problem.prompt) {
@@ -4299,17 +4552,12 @@ document.addEventListener('DOMContentLoaded', () => {
         showTablesScreen();
       });
     }
-    // Mapa de niveles (desde Entrenar)
-    const homeLevelsBtn = document.getElementById('home-levels-btn');
-    if (homeLevelsBtn) {
-      homeLevelsBtn.addEventListener('click', () => {
-        showLevelsScreen();
-      });
-    }
-    const levelsBackBtn = document.getElementById('levels-back-btn');
-    if (levelsBackBtn) {
-      levelsBackBtn.addEventListener('click', () => {
-        showScreen('train');
+    // Continuar el camino: abre la pestaña Camino en la etapa actual
+    const continuePathBtn = document.getElementById('continue-path-btn');
+    if (continuePathBtn) {
+      continuePathBtn.addEventListener('click', () => {
+        selectedPathNode = currentPathNode();
+        showScreen('learn');
       });
     }
     // Constructor de sesiones: guarda la configuración y arranca
@@ -4513,8 +4761,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Reiniciar entrenamiento
     trainRestartBtn.addEventListener('click', () => {
-      // Reiniciar según el tipo de sesión: nivel, específica o aleatoria
-      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL && levelSession) {
+      // Reiniciar según el tipo de sesión: inteligente, nivel, específica o aleatoria
+      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL && levelSession && levelSession.kind === 'smart') {
+        startSmartSession();
+      } else if (trainingSessionContext === TRAINING_CONTEXT.LEVEL && levelSession) {
         startLevelSession(levelSession.levelId, levelSession.kind, levelSession.techniqueId);
       } else if (isSpecificTrainingActive()) {
         startSpecificTrainingSession();

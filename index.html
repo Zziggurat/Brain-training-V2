@@ -35,12 +35,12 @@
       background: #05070d;
     }
   </style>
-  <link rel="stylesheet" href="style.css?r=20260714-1" />
-  <link rel="stylesheet" href="custom.css?r=20260714-1" />
-  <script defer src="lib/problemWeight.js?r=20260714-1"></script>
-  <script defer src="lib/adaptiveEngine.js?r=20260714-1"></script>
-  <script defer src="lib/levels.js?r=20260714-1"></script>
-  <script defer src="script.js?r=20260714-1"></script>
+  <link rel="stylesheet" href="style.css?r=20260714-2" />
+  <link rel="stylesheet" href="custom.css?r=20260714-2" />
+  <script defer src="lib/problemWeight.js?r=20260714-2"></script>
+  <script defer src="lib/adaptiveEngine.js?r=20260714-2"></script>
+  <script defer src="lib/levels.js?r=20260714-2"></script>
+  <script defer src="script.js?r=20260714-2"></script>
 </head>
 
 <body>
@@ -69,8 +69,9 @@
               </div>
             </div>
             <div class="hero-cta">
-              <button id="smart-session-btn">⚡ Entrenar ahora</button>
-              <p id="smart-session-hint" class="hero-hint">Sesión inteligente a tu medida</p>
+              <button id="continue-path-btn">▶ Continuar el camino</button>
+              <button id="smart-session-btn" class="hero-secondary">⚡ Sesión inteligente</button>
+              <p id="smart-session-hint" class="hero-hint">Tu entrenador personal global</p>
             </div>
           </div>
           <div id="home-quick-stats" class="quick-stats" aria-live="polite"></div>
@@ -80,12 +81,13 @@
         <div id="assistant-panel" class="assistant-panel"></div>
       </div>
 
-      <!-- ============ PESTAÑA ENTRENAR: constructor de sesiones ============ -->
+      <!-- ============ PESTAÑA ENTRENAR: práctica libre ============ -->
       <div id="train-screen" class="screen tab-screen">
         <h2 class="tab-title">Entrenar</h2>
+        <p class="tab-subtitle">Práctica libre para reforzar: aquí no avanzas en el camino, lo afilas.</p>
         <div class="section-card">
           <h3 class="section-head">⚡ Sesión inteligente</h3>
-          <p class="section-desc">El motor adaptativo combina tus repasos pendientes, errores y puntos débiles en una sola tanda.</p>
+          <p class="section-desc" id="smart-session-desc">Tu entrenador personal: analiza todas tus habilidades y compone una tanda con lo que más te conviene ahora.</p>
           <button id="smart-session-btn-train" class="primary-btn">Empezar sesión inteligente</button>
         </div>
         <div class="section-card" id="train-errors-card">
@@ -94,9 +96,9 @@
           <button id="home-errors-btn" class="primary-btn ghost-btn">Repasar errores <span id="errors-badge" class="errors-badge hidden" aria-hidden="true"></span></button>
         </div>
         <div class="section-card">
-          <h3 class="section-head">🗺️ Niveles de cálculo mental <span id="train-levels-medals" class="section-badge"></span></h3>
-          <p class="section-desc" id="train-levels-desc">Técnicas, jefes y medallas: tu camino hasta la élite.</p>
-          <button id="home-levels-btn" class="primary-btn">Abrir mapa de niveles</button>
+          <h3 class="section-head">🧠 Práctica por técnica</h3>
+          <p class="section-desc">Elige cualquier técnica que ya conozcas y dale caña. Consulta el truco con 📖 antes de empezar.</p>
+          <div id="tech-library" class="tech-library"></div>
         </div>
         <div class="section-card">
           <h3 class="section-head">✳️ Tablas a medida</h3>
@@ -140,24 +142,15 @@
         </div>
       </div>
 
-      <!-- ============ PESTAÑA APRENDER: descubrir y estudiar ============ -->
+      <!-- ============ PESTAÑA CAMINO: el recorrido oficial ============ -->
       <div id="learn-screen" class="screen tab-screen">
-        <h2 class="tab-title">Aprender</h2>
-        <div class="section-card">
-          <h3 class="section-head">🎓 Aprendizaje guiado</h3>
-          <p class="section-desc">Domina cada combinación paso a paso con estrellas y repaso espaciado.</p>
-          <button id="home-learn-btn" class="primary-btn">Empezar aprendizaje</button>
+        <h2 class="tab-title">Camino</h2>
+        <p class="tab-subtitle">Tu recorrido oficial: 13 etapas para dominar toda la aritmética mental.</p>
+        <div class="section-card path-card">
+          <div id="path-summary" class="path-summary"></div>
+          <div id="path-map" class="path-map" role="list" aria-label="Etapas del camino"></div>
         </div>
-        <div class="section-card">
-          <h3 class="section-head">🧮 Tablas de consulta</h3>
-          <p class="section-desc">Repasa las tablas completas y monta entrenamientos específicos a tu medida.</p>
-          <button id="home-tables-btn" class="primary-btn ghost-btn">Ver tablas</button>
-        </div>
-        <div class="section-card">
-          <h3 class="section-head">📖 Biblioteca de técnicas</h3>
-          <p class="section-desc">Todos los trucos de cálculo mental de los 12 niveles, siempre a mano.</p>
-          <div id="tech-library" class="tech-library"></div>
-        </div>
+        <div id="path-detail" class="section-card path-detail"></div>
         <div class="section-card">
           <h3 class="section-head">💬 Guía rápida</h3>
           <div class="learn-help-row">
@@ -207,16 +200,7 @@
         </div>
       </div>
 
-      <!-- ============ SUBPANTALLA: mapa de niveles (desde Entrenar) ============ -->
-      <div id="levels-screen" class="screen">
-        <div class="top-bar">
-          <button class="back-home-btn" id="levels-back-btn" aria-label="Volver a Entrenar">←</button>
-          <h2>Niveles</h2>
-        </div>
-        <div id="levels-map" class="levels-map"></div>
-      </div>
-
-      <!-- ============ SUBPANTALLA: tablas (desde Aprender) ============ -->
+      <!-- ============ SUBPANTALLA: tablas (desde el Camino) ============ -->
       <div id="tables-screen" class="screen">
         <div class="top-bar">
           <button class="back-home-btn" id="tables-back-btn" aria-label="Volver a Aprender">←</button>
@@ -282,7 +266,7 @@
         <span class="tab-ico" aria-hidden="true">🎯</span><span class="tab-lbl">Entrenar</span>
       </button>
       <button class="tab-btn" data-tab="learn" type="button">
-        <span class="tab-ico" aria-hidden="true">📖</span><span class="tab-lbl">Aprender</span>
+        <span class="tab-ico" aria-hidden="true">🛤️</span><span class="tab-lbl">Camino</span>
       </button>
       <button class="tab-btn" data-tab="analysis" type="button">
         <span class="tab-ico" aria-hidden="true">📊</span><span class="tab-lbl">Análisis</span>
