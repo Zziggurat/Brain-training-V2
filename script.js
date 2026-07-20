@@ -94,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let trainingHasMistake = false;
   // Sesión de nivel en curso (práctica de técnica o jefe de nivel)
   let levelSession = null;
+  // Modo racha 🔥: solo si el usuario lo activa, un fallo termina la sesión
+  let strictTrainingSession = false;
 
   // Elementos de la pantalla de progreso
   const heatmapContainer = document.getElementById('heatmap-container');
@@ -394,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     multipleChoice: false,
     numQuestions: 10,
     seconds: 30,
+    strict: false,
   });
 
   function cloneModeSettings(source = defaultModeSettings) {
@@ -408,6 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? source.numQuestions
         : defaultModeSettings.numQuestions,
       seconds: Number.isFinite(source.seconds) ? source.seconds : defaultModeSettings.seconds,
+      strict: typeof source.strict === 'boolean' ? source.strict : defaultModeSettings.strict,
     };
   }
 
@@ -1292,7 +1296,13 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {number} timeTaken - Tiempo (ms) utilizado para responder.
    */
   function updateDailyStats(isCorrect, timeTaken) {
+    const goalBefore = dailyStats.totalQuestions;
     dailyStats.totalQuestions++;
+    // Celebrar el cierre del anillo justo cuando se alcanza la meta
+    const dailyGoalValue = getDailyGoal();
+    if (goalBefore < dailyGoalValue && dailyStats.totalQuestions >= dailyGoalValue) {
+      showToast(`🎉 ¡Meta diaria cumplida! ${dailyGoalValue} ejercicios`, 'success');
+    }
     if (isCorrect) {
       dailyStats.totalCorrect++;
       dailyStats.streakCurrent++;
@@ -1518,6 +1528,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function computeRecommendations() {
+    // Bienvenida con dirección: al usuario recién llegado se le señala
+    // el camino, no una estadística de combinaciones.
+    if (
+      Object.keys(masteryMap).length === 0 &&
+      (!adaptiveState || Object.keys(adaptiveState.skills).length === 0)
+    ) {
+      const action = nextPathAction();
+      return [
+        {
+          id: 'welcome',
+          title: '👋 Bienvenido a tu camino',
+          reason: 'Empieza por los Cimientos: domina las tablas y las etapas se abrirán una a una.',
+          action: action ? action.run : () => showScreen('learn'),
+        },
+      ];
+    }
     const { min, max } = getActiveModeConfig();
     const operation = getActiveOperation();
     const now = Date.now();
@@ -2004,22 +2030,74 @@ document.addEventListener('DOMContentLoaded', () => {
     return streak;
   }
 
-  /** Siguiente reto de niveles: primer nivel sin medalla o sin oro. */
-  function findNextChallenge() {
+  /**
+   * La brújula única del camino: calcula el siguiente paso CONCRETO del
+   * usuario (aprender cimientos, practicar la próxima técnica o lanzar
+   * el desafío) y lo devuelve como acción ejecutable. La usan el reto
+   * del Inicio, "Continuar el camino", el asistente y el botón
+   * "Siguiente paso" tras cada sesión: una sola recomendación en toda
+   * la app, sin brújulas contradictorias.
+   */
+  function nextPathAction() {
+    const id = currentPathNode();
     const LevelsMod = getLevelsModule();
-    if (!LevelsMod) return null;
-    const unlockedPlayable = LevelsMod.LEVELS.filter(
-      (l) => Array.isArray(l.techniques) && l.techniques.length > 0 && LevelsMod.isUnlocked(l.id, levelProgress)
-    );
-    let target = unlockedPlayable.find((l) => !(levelProgress[l.id] && levelProgress[l.id].medal));
-    if (!target) {
-      target = unlockedPlayable.find((l) => levelProgress[l.id] && levelProgress[l.id].medal !== 'gold');
+    // Etapa 0: cimientos aún sin medalla → aprender la operación más floja
+    if (id === 0 && !pathNodeState(0).medal) {
+      const mulPct = Math.round(calculateProgress('multiplication'));
+      const divPct = Math.round(calculateProgress('division'));
+      const op = divPct < mulPct ? 'division' : 'multiplication';
+      return {
+        stage: 0,
+        label: op === 'division' ? '🎓 Aprender divisiones' : '🎓 Aprender multiplicaciones',
+        description: `Etapa 0 · Cimientos: domina las tablas (× ${mulPct}% · ÷ ${divPct}%) y el camino se abrirá.`,
+        run: () => {
+          if (getActiveOperation() !== op) {
+            setActiveOperation(op);
+            localStorage.setItem('config', JSON.stringify(config));
+            updateHomeOperationToggle();
+          }
+          startLearningSession();
+        },
+      };
     }
-    return target || null;
+    const level = LevelsMod ? LevelsMod.getLevel(id) : null;
+    if (!level || !Array.isArray(level.techniques)) return null;
+    // ¿Queda alguna técnica de la etapa sin evidencia de dominio?
+    const engine = getAdaptiveEngine();
+    const info = getLevelSkillsInfo();
+    const pending = level.techniques.find((tech) => {
+      if (tech.id === 'blitz') return false;
+      const skills = info.byTechnique[`${level.id}:${tech.id}`] || [];
+      if (!engine || !adaptiveState || !skills.length) return true;
+      return !skills.every((skillId) => {
+        const s = adaptiveState.skills[skillId];
+        return s && s.attempts >= 6 && engine.accuracyOf(s) >= 0.6;
+      });
+    });
+    if (pending) {
+      return {
+        stage: id,
+        label: `🎓 Practicar: ${pending.name}`,
+        description: `Etapa ${id} · ${level.title}: tu siguiente técnica del camino.`,
+        run: () => startLevelSession(id, 'practice', pending.id),
+      };
+    }
+    const state = pathNodeState(id);
+    return {
+      stage: id,
+      label: `⚔️ Desafío de la etapa ${id}`,
+      description: state.medal
+        ? `Etapa ${id} · ${level.title}: ya tienes ${MEDAL_LABELS[state.medal].split(' ')[1].toLowerCase()}, ve a por más.`
+        : `Etapa ${id} · ${level.title}: técnicas listas, ¡a por la medalla!`,
+      run: () => startLevelSession(id, 'boss'),
+    };
   }
 
   function countMedals() {
-    return Object.keys(levelProgress).filter((id) => levelProgress[id] && levelProgress[id].medal).length;
+    // Solo etapas 1-12: la de cimientos (clave 0) se cuenta aparte
+    return Object.keys(levelProgress).filter(
+      (id) => id !== '0' && levelProgress[id] && levelProgress[id].medal
+    ).length;
   }
 
   /** Medallas del camino completo (incluye la etapa 0 de cimientos). */
@@ -2092,29 +2170,26 @@ document.addEventListener('DOMContentLoaded', () => {
         quickStats.appendChild(stat);
       });
     }
-    // Próximo reto de niveles
+    // Próximo paso del camino: la misma brújula que en todas partes
     const challenge = document.getElementById('next-challenge-card');
     if (challenge) {
       challenge.innerHTML = '';
-      const level = findNextChallenge();
-      if (!level) {
+      const action = nextPathAction();
+      if (!action) {
         challenge.classList.add('hidden');
       } else {
         challenge.classList.remove('hidden');
         const title = document.createElement('h3');
         title.className = 'section-head';
-        const progress = levelProgress[level.id];
-        title.textContent = `${level.emoji} Tu próximo reto`;
+        title.textContent = '🧭 Tu próximo paso';
         const desc = document.createElement('p');
         desc.className = 'section-desc';
-        desc.textContent = progress && progress.medal
-          ? `Etapa ${level.id} · ${level.title}: ya tienes ${progress.medal === 'silver' ? 'plata' : 'bronce'}, ve a por el oro.`
-          : `Etapa ${level.id} · ${level.title}: supera el desafío para ganar tu medalla.`;
+        desc.textContent = action.description;
         const btn = document.createElement('button');
         btn.className = 'primary-btn';
-        btn.textContent = `⚔️ Desafío de la etapa ${level.id}`;
+        btn.textContent = action.label;
         btn.addEventListener('click', () => {
-          startLevelSession(level.id, 'boss');
+          action.run();
         });
         challenge.appendChild(title);
         challenge.appendChild(desc);
@@ -2178,19 +2253,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** Biblioteca de técnicas en Aprender (se construye una sola vez). */
-  let techLibraryBuilt = false;
+  /** Biblioteca de técnicas en Entrenar (se refresca al mostrar la pestaña
+   *  para reflejar los desbloqueos del camino). */
   function renderTechLibrary() {
-    if (techLibraryBuilt) return;
     const container = document.getElementById('tech-library');
     const LevelsMod = getLevelsModule();
     if (!container || !LevelsMod) return;
+    container.innerHTML = '';
     LevelsMod.LEVELS.forEach((level) => {
       if (!Array.isArray(level.techniques) || !level.techniques.length) return;
+      const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
       const group = document.createElement('div');
       group.className = 'tech-group';
+      if (!unlocked) group.classList.add('ahead');
       const heading = document.createElement('h4');
       heading.textContent = `${level.emoji} ${level.title}`;
+      const stageChip = document.createElement('span');
+      stageChip.className = 'tech-stage-chip';
+      stageChip.textContent = unlocked ? `etapa ${level.id}` : `etapa ${level.id} · más adelante`;
+      heading.appendChild(stageChip);
       group.appendChild(heading);
       level.techniques.forEach((tech) => {
         const row = document.createElement('div');
@@ -2215,7 +2296,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       container.appendChild(group);
     });
-    techLibraryBuilt = true;
   }
 
   /** Perfil: medallas, racha, totales e indicador de dominio. */
@@ -2669,6 +2749,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Regla unificada: fallar muestra la solución y la sesión continúa.
+   * La única excepción es el "modo racha 🔥" que el usuario activa a
+   * propósito en el constructor (un fallo termina la sesión).
+   */
+  function sessionContinuesOnMistake() {
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) return true;
+    return trainingSessionContext === TRAINING_CONTEXT.GENERAL && !strictTrainingSession;
+  }
+
+  /**
    * Comprobar si un valor responde al problema. Los ejercicios de
    * estimación declaran `tolerance`: cualquier valor dentro del margen
    * cuenta como acierto (los problemas exactos usan tolerancia 0).
@@ -2757,6 +2847,8 @@ document.addEventListener('DOMContentLoaded', () => {
     configMultipleChoice.checked = modeConfig.multipleChoice;
     configNumQuestionsSelect.value = modeConfig.numQuestions;
     configSecondsInput.value = modeConfig.seconds;
+    const strictInput = document.getElementById('config-strict-mode');
+    if (strictInput) strictInput.checked = !!modeConfig.strict;
   }
 
   /**
@@ -2801,6 +2893,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modeConfig.multipleChoice = mcVal;
     modeConfig.numQuestions = numQVal;
     modeConfig.seconds = secondsVal;
+    const strictInput = document.getElementById('config-strict-mode');
+    if (strictInput) modeConfig.strict = strictInput.checked;
     config.activeOperation = selectedOperation;
     localStorage.setItem('config', JSON.stringify(config));
     fillConfigInputs(selectedOperation);
@@ -3700,6 +3794,27 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTrainingProblem();
   }
 
+  /**
+   * Mostrar el botón "Siguiente paso" al terminar cualquier sesión, con
+   * la acción que la brújula del camino recomiende en ese momento.
+   */
+  function showNextStepButton() {
+    const btn = document.getElementById('train-next-btn');
+    if (!btn) return;
+    const action = nextPathAction();
+    if (!action) {
+      btn.classList.add('hidden');
+      return;
+    }
+    btn.textContent = `▶ ${action.label}`;
+    btn.classList.remove('hidden');
+  }
+
+  function hideNextStepButton() {
+    const btn = document.getElementById('train-next-btn');
+    if (btn) btn.classList.add('hidden');
+  }
+
   /** Cerrar la sesión de nivel: resumen y, en el jefe, medalla y registro. */
   function finishLevelSession() {
     const LevelsMod = getLevelsModule();
@@ -3719,6 +3834,7 @@ document.addEventListener('DOMContentLoaded', () => {
         smartAcc >= 85 ? 'success' : 'neutral'
       );
       trainRestartBtn.classList.remove('hidden');
+      showNextStepButton();
       return;
     }
     const level = LevelsMod.getLevel(session.levelId);
@@ -3754,11 +3870,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       setFeedback(
         trainFeedbackDiv,
-        accPct >= 90 ? '¡Técnica dominada! Atrévete con el jefe de nivel.' : 'Buen entrenamiento: repite la técnica hasta rozar el 100%.',
+        accPct >= 90 ? '¡Técnica dominada! Atrévete con el desafío de la etapa.' : 'Buen entrenamiento: repite la técnica hasta rozar el 100%.',
         accPct >= 90 ? 'success' : 'neutral'
       );
     }
     trainRestartBtn.classList.remove('hidden');
+    showNextStepButton();
   }
 
   // ----- EL CAMINO: recorrido oficial de 13 etapas -----
@@ -3775,10 +3892,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function foundationMedal() {
     const pct = foundationProgress();
-    if (pct >= FOUNDATION_THRESHOLDS.gold) return 'gold';
-    if (pct >= FOUNDATION_THRESHOLDS.silver) return 'silver';
-    if (pct >= FOUNDATION_THRESHOLDS.bronze) return 'bronze';
-    return null;
+    const computed =
+      pct >= FOUNDATION_THRESHOLDS.gold
+        ? 'gold'
+        : pct >= FOUNDATION_THRESHOLDS.silver
+          ? 'silver'
+          : pct >= FOUNDATION_THRESHOLDS.bronze
+            ? 'bronze'
+            : null;
+    // Una medalla ganada no se pierde: si el usuario amplía el rango de
+    // tablas y el dominio se recalcula a la baja, la conquista se conserva.
+    const stored = (levelProgress[0] && levelProgress[0].medal) || null;
+    const LevelsMod = getLevelsModule();
+    const best = LevelsMod ? LevelsMod.betterMedal(computed, stored) : computed || stored;
+    if (best && best !== stored) {
+      levelProgress[0] = Object.assign({}, levelProgress[0], { medal: best });
+      saveLevelProgress();
+    }
+    return best || null;
   }
 
   /**
@@ -4077,6 +4208,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startTrainingSession() {
     levelSession = null;
+    strictTrainingSession = !!getActiveModeConfig().strict;
     configureTrainingSession(TRAINING_CONTEXT.GENERAL);
     trainProblems = generateProblems();
     trainIndex = 0;
@@ -4114,9 +4246,13 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTrainingSkipPolicy();
 
     setFeedback(trainFeedbackDiv, '');
-    // En la práctica de técnica se muestra la pista pedagógica del ejercicio
+    hideNextStepButton();
+    // En la práctica de técnica se muestra la pista pedagógica del ejercicio;
+    // en el resto, las estimaciones anuncian siempre su margen aceptado
     if (levelSession && levelSession.kind === 'practice' && problem.hint) {
       setFeedback(trainFeedbackDiv, `💡 ${problem.hint}`);
+    } else if (Number.isFinite(problem.tolerance) && problem.tolerance > 0) {
+      setFeedback(trainFeedbackDiv, `Estimación: se acepta un margen de ±${problem.tolerance.toLocaleString('es-ES')}`);
     }
     trainAnswerArea.innerHTML = '';
     trainTypedAnswer = '';
@@ -4265,9 +4401,8 @@ document.addEventListener('DOMContentLoaded', () => {
       scheduleNextTrainingQuestion(500);
     } else {
       trainingHasMistake = true;
-      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
-        // En niveles el fallo no termina la sesión: se muestra la solución
-        // y se avanza (la medalla se juega con la precisión del conjunto).
+      if (sessionContinuesOnMistake()) {
+        // El fallo no termina la sesión: se muestra la solución y se avanza
         buttons.forEach((b) => {
           const val = parseInt(b.textContent, 10);
           b.classList.add(val === correct ? 'correct' : 'incorrect');
@@ -4358,7 +4493,7 @@ document.addEventListener('DOMContentLoaded', () => {
       trainingHasMistake = true;
       const correctText = String(correct);
       display.classList.add('incorrect');
-      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+      if (sessionContinuesOnMistake()) {
         display.textContent = correctText;
         setFeedback(trainFeedbackDiv, `La respuesta era ${correctText}.`, 'error');
         saveStats();
@@ -4403,6 +4538,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     setFeedback(trainFeedbackDiv, '¡Sesión completada!', 'success');
     trainRestartBtn.classList.remove('hidden');
+    showNextStepButton();
   }
 
   /**
@@ -4421,6 +4557,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // El mensaje ya se ha establecido antes de llamar a esta función
     // Aseguramos que el botón de reinicio sea visible
     trainRestartBtn.classList.remove('hidden');
+    showNextStepButton();
   }
 
   /**
@@ -4433,24 +4570,28 @@ document.addEventListener('DOMContentLoaded', () => {
       clearInterval(trainTimer);
       trainTimer = null;
     }
-    // En sesiones de nivel, agotar el tiempo cuenta como fallo del ítem
-    // pero la sesión continúa con el siguiente ejercicio.
-    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
-      const levelProblem = trainProblems[trainIndex];
-      if (levelProblem && reason === 'time') {
+    // Regla unificada: agotar el tiempo cuenta como fallo del ítem pero
+    // la sesión continúa (salvo modo racha explícito).
+    if (sessionContinuesOnMistake()) {
+      const currentProblemTimed = trainProblems[trainIndex];
+      if (currentProblemTimed && reason === 'time') {
         const timeTaken = Date.now() - trainQuestionStartTime;
-        recordProblemAttempt(levelProblem, {
+        recordProblemAttempt(currentProblemTimed, {
           correct: false,
           timeTaken,
           skipped: false,
-          mode: 'level',
+          mode: currentTrainingMode(),
           source: 'timeout',
           timedOut: true,
         });
         updateDailyStats(false, timeTaken);
         const display = trainAnswerArea.querySelector('#train-display');
-        if (display) display.textContent = String(levelProblem.answer);
-        setFeedback(trainFeedbackDiv, `¡Tiempo agotado! La respuesta era ${levelProblem.answer}.`, 'error');
+        if (display) display.textContent = String(currentProblemTimed.answer);
+        const options = trainAnswerArea.querySelectorAll('.answer-option');
+        options.forEach((btn) => {
+          if (parseInt(btn.textContent, 10) === currentProblemTimed.answer) btn.classList.add('correct');
+        });
+        setFeedback(trainFeedbackDiv, `¡Tiempo agotado! La respuesta era ${currentProblemTimed.answer}.`, 'error');
       }
       trainAnswerArea.querySelectorAll('button').forEach((btn) => {
         btn.disabled = true;
@@ -4896,12 +5037,29 @@ document.addEventListener('DOMContentLoaded', () => {
         buildHeatmap();
       });
     }
-    // Continuar el camino: abre la pestaña Camino en la etapa actual
+    // Continuar el camino: un toque y directo a la acción que toca
     const continuePathBtn = document.getElementById('continue-path-btn');
     if (continuePathBtn) {
       continuePathBtn.addEventListener('click', () => {
+        const action = nextPathAction();
         selectedPathNode = currentPathNode();
-        showScreen('learn');
+        if (action) {
+          action.run();
+        } else {
+          showScreen('learn');
+        }
+      });
+    }
+    // "Siguiente paso" tras cada sesión: continuidad sin navegar
+    const trainNextBtn = document.getElementById('train-next-btn');
+    if (trainNextBtn) {
+      trainNextBtn.addEventListener('click', () => {
+        const action = nextPathAction();
+        if (action) {
+          action.run();
+        } else {
+          showScreen('learn');
+        }
       });
     }
     // Constructor de sesiones: guarda la configuración y arranca
@@ -4972,23 +5130,45 @@ document.addEventListener('DOMContentLoaded', () => {
       // Mostrar confirmación antes de eliminar todo el progreso
       const confirmed = window.confirm('¿Estás seguro de que deseas eliminar todo tu progreso?');
       if (!confirmed) return;
-      // Restablecer estadísticas, estrellas, repaso y errores
+      // Restablecer TODO el progreso: estadísticas, estrellas, repaso,
+      // errores, medallas del camino, motor adaptativo y métricas del día.
+      // La configuración personal (metas, rangos) se conserva.
       stats = Object.assign({}, defaultStats);
       stars = {};
       dueTimes = {};
       intervalStages = {};
       errorsToday = {};
       masteryMap = {};
+      levelProgress = {};
+      selectedPathNode = null;
+      const engineForReset = getAdaptiveEngine();
+      adaptiveState = engineForReset ? engineForReset.createState() : null;
+      dailyStats = {
+        date: getTodayDate(),
+        totalQuestions: 0,
+        totalCorrect: 0,
+        totalTime: 0,
+        streakCurrent: 0,
+        streakMax: 0,
+      };
       saveStats();
       saveStars();
       saveDueTimes();
       saveIntervalStages();
       saveErrors();
       saveMastery();
+      saveLevelProgress();
+      saveDailyStats();
+      if (adaptiveState) {
+        saveAdaptiveState();
+      } else {
+        localStorage.removeItem(ADAPTIVE_STORAGE_KEY);
+      }
       updateProgressBar();
       updateErrorsBadge();
       scheduleAssistantPanelRefresh();
-      showToast('Progreso eliminado', 'success');
+      renderProfile();
+      showToast('Progreso eliminado por completo', 'success');
     });
     // Botones de salida del modo enfoque: vuelven a la pestaña de origen
     learnBackBtn.addEventListener('click', () => {

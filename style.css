@@ -371,6 +371,7 @@ button:disabled {
 #learn-skip-btn,
 #train-skip-btn,
 #train-restart-btn,
+#train-next-btn,
 #start-specific-btn,
 #reset-progress-btn,
 #home-progress-btn {
@@ -833,9 +834,15 @@ input[type="checkbox"] {
 
 #learn-skip-btn,
 #train-skip-btn,
-#train-restart-btn {
+#train-restart-btn,
+#train-next-btn {
   max-width: var(--keypad-width);
   align-self: center;
+}
+
+/* El siguiente paso destaca sobre el reintento */
+#train-next-btn {
+  background: linear-gradient(135deg, #5a8dff 0%, #2575fc 55%, #7c3aed 130%);
 }
 
 #learn-skip-btn,
@@ -1500,6 +1507,26 @@ body.focus-mode #toast-container {
   font-size: 14.5px;
   font-weight: 700;
   color: #7db4ff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tech-stage-chip {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(9, 14, 25, 0.7);
+  border: 1px solid var(--glass-highlight);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.tech-group.ahead {
+  opacity: 0.65;
 }
 
 .learn-help-row {
