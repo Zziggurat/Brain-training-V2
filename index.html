@@ -35,12 +35,12 @@
       background: #05070d;
     }
   </style>
-  <link rel="stylesheet" href="style.css?r=20260715-2" />
-  <link rel="stylesheet" href="custom.css?r=20260715-2" />
-  <script defer src="lib/problemWeight.js?r=20260715-2"></script>
-  <script defer src="lib/adaptiveEngine.js?r=20260715-2"></script>
-  <script defer src="lib/levels.js?r=20260715-2"></script>
-  <script defer src="script.js?r=20260715-2"></script>
+  <link rel="stylesheet" href="style.css?r=20260716-1" />
+  <link rel="stylesheet" href="custom.css?r=20260716-1" />
+  <script defer src="lib/problemWeight.js?r=20260716-1"></script>
+  <script defer src="lib/adaptiveEngine.js?r=20260716-1"></script>
+  <script defer src="lib/levels.js?r=20260716-1"></script>
+  <script defer src="script.js?r=20260716-1"></script>
 </head>
 
 <body>
@@ -69,7 +69,7 @@
               </div>
             </div>
             <div class="hero-cta">
-              <button id="continue-path-btn">▶ Continuar el camino</button>
+              <button id="continue-path-btn">▶ Continuar la progresión</button>
               <button id="smart-session-btn" class="hero-secondary">⚡ Sesión inteligente</button>
               <p id="smart-session-hint" class="hero-hint">Tu entrenador personal global</p>
             </div>
@@ -84,7 +84,7 @@
       <!-- ============ PESTAÑA ENTRENAR: práctica libre ============ -->
       <div id="train-screen" class="screen tab-screen">
         <h2 class="tab-title">Entrenar</h2>
-        <p class="tab-subtitle">Práctica libre para reforzar: aquí no avanzas en el camino, lo afilas.</p>
+        <p class="tab-subtitle">Práctica libre para reforzar: aquí no avanzas en la progresión, la afilas.</p>
         <div class="section-card">
           <h3 class="section-head">⚡ Sesión inteligente</h3>
           <p class="section-desc" id="smart-session-desc">Tu entrenador personal: analiza todas tus habilidades y compone una tanda con lo que más te conviene ahora.</p>
@@ -146,10 +146,10 @@
         </div>
       </div>
 
-      <!-- ============ PESTAÑA CAMINO: el recorrido oficial ============ -->
+      <!-- ============ PESTAÑA PROGRESIÓN: el recorrido oficial ============ -->
       <div id="learn-screen" class="screen tab-screen">
-        <h2 class="tab-title">Camino</h2>
-        <p class="tab-subtitle">Tu recorrido oficial: 13 etapas para dominar toda la aritmética mental.</p>
+        <h2 class="tab-title">Progresión</h2>
+        <p class="tab-subtitle">Tu recorrido oficial: 13 etapas, de las tablas a la élite del cálculo mental.</p>
         <div class="section-card path-card">
           <div id="path-summary" class="path-summary"></div>
           <div id="path-map" class="path-map" role="list" aria-label="Etapas del camino"></div>
@@ -297,7 +297,7 @@
         <span class="tab-ico" aria-hidden="true">🎯</span><span class="tab-lbl">Entrenar</span>
       </button>
       <button class="tab-btn" data-tab="learn" type="button">
-        <span class="tab-ico" aria-hidden="true">🛤️</span><span class="tab-lbl">Camino</span>
+        <span class="tab-ico" aria-hidden="true">🛤️</span><span class="tab-lbl">Progresión</span>
       </button>
       <button class="tab-btn" data-tab="analysis" type="button">
         <span class="tab-ico" aria-hidden="true">📊</span><span class="tab-lbl">Análisis</span>
@@ -313,6 +313,7 @@
     <div class="modal-card">
       <h3 id="modal-title"></h3>
       <ul id="modal-body"></ul>
+      <button id="modal-action-btn" class="hidden">▶ Practicar</button>
       <button id="modal-close-btn">Entendido</button>
     </div>
   </div>

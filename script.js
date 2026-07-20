@@ -323,21 +323,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalCloseBtn = document.getElementById('modal-close-btn');
   let modalLastFocus = null;
 
-  function openModal(title, items) {
+  // Acción opcional del modal (p. ej. "▶ Practicar" en las técnicas)
+  let modalAction = null;
+
+  function openModal(title, items, options = {}) {
     if (!appModal || !modalTitle || !modalBody) return;
     modalLastFocus = document.activeElement;
     modalTitle.textContent = title;
     modalBody.innerHTML = '';
-    items.forEach(([strongText, restText]) => {
+    items.forEach((item) => {
       const li = document.createElement('li');
-      if (strongText) {
-        const strong = document.createElement('strong');
-        strong.textContent = strongText;
-        li.appendChild(strong);
+      if (Array.isArray(item)) {
+        const [strongText, restText] = item;
+        if (strongText) {
+          const strong = document.createElement('strong');
+          strong.textContent = strongText;
+          li.appendChild(strong);
+        }
+        li.appendChild(document.createTextNode(restText));
+      } else {
+        li.textContent = String(item);
       }
-      li.appendChild(document.createTextNode(restText));
       modalBody.appendChild(li);
     });
+    modalAction = typeof options.onAction === 'function' ? options.onAction : null;
+    const actionBtn = document.getElementById('modal-action-btn');
+    if (actionBtn) {
+      actionBtn.classList.toggle('hidden', !modalAction);
+      actionBtn.textContent = options.actionLabel || '▶ Practicar';
+    }
     appModal.classList.remove('hidden');
     if (modalCloseBtn) {
       modalCloseBtn.focus();
@@ -1538,7 +1552,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return [
         {
           id: 'welcome',
-          title: '👋 Bienvenido a tu camino',
+          title: '👋 Bienvenido a tu progresión',
           reason: 'Empieza por los Cimientos: domina las tablas y las etapas se abrirán una a una.',
           action: action ? action.run : () => showScreen('learn'),
         },
@@ -2049,7 +2063,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return {
         stage: 0,
         label: op === 'division' ? '🎓 Aprender divisiones' : '🎓 Aprender multiplicaciones',
-        description: `Etapa 0 · Cimientos: domina las tablas (× ${mulPct}% · ÷ ${divPct}%) y el camino se abrirá.`,
+        description: `Etapa 0 · Cimientos: domina las tablas (× ${mulPct}% · ÷ ${divPct}%) y las etapas se abrirán.`,
         run: () => {
           if (getActiveOperation() !== op) {
             setActiveOperation(op);
@@ -2063,22 +2077,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const level = LevelsMod ? LevelsMod.getLevel(id) : null;
     if (!level || !Array.isArray(level.techniques)) return null;
     // ¿Queda alguna técnica de la etapa sin evidencia de dominio?
-    const engine = getAdaptiveEngine();
-    const info = getLevelSkillsInfo();
-    const pending = level.techniques.find((tech) => {
-      if (tech.id === 'blitz') return false;
-      const skills = info.byTechnique[`${level.id}:${tech.id}`] || [];
-      if (!engine || !adaptiveState || !skills.length) return true;
-      return !skills.every((skillId) => {
-        const s = adaptiveState.skills[skillId];
-        return s && s.attempts >= 6 && engine.accuracyOf(s) >= 0.6;
-      });
-    });
+    const pending = level.techniques.find(
+      (tech) => tech.id !== 'blitz' && !isTechniqueMastered(level.id, tech.id)
+    );
     if (pending) {
       return {
         stage: id,
         label: `🎓 Practicar: ${pending.name}`,
-        description: `Etapa ${id} · ${level.title}: tu siguiente técnica del camino.`,
+        description: `Etapa ${id} · ${level.title}: tu siguiente técnica de la progresión.`,
         run: () => startLevelSession(id, 'practice', pending.id),
       };
     }
@@ -2155,7 +2161,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const accToday = dailyStats.totalQuestions > 0 ? Math.round((dailyStats.totalCorrect / dailyStats.totalQuestions) * 100) : null;
       const items = [
         { label: 'acierto hoy', value: accToday === null ? '—' : `${accToday}%` },
-        { label: 'camino', value: `🛤️ ${pathProgressPercent()}%` },
+        { label: 'progresión', value: `🛤️ ${pathProgressPercent()}%` },
         { label: 'medallas', value: `🏅 ${countPathMedals()}/13` },
       ];
       items.forEach(({ label, value }) => {
@@ -2253,8 +2259,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** Biblioteca de técnicas en Entrenar (se refresca al mostrar la pestaña
-   *  para reflejar los desbloqueos del camino). */
+  /**
+   * Biblioteca de técnicas en Entrenar: rejilla de tarjetas visuales.
+   * Cada tarjeta abre el modal de la técnica (resumen + pasos) con el
+   * botón "▶ Practicar" integrado. Se refresca al mostrar la pestaña
+   * para reflejar los desbloqueos y la maestría del momento.
+   */
   function renderTechLibrary() {
     const container = document.getElementById('tech-library');
     const LevelsMod = getLevelsModule();
@@ -2263,38 +2273,45 @@ document.addEventListener('DOMContentLoaded', () => {
     LevelsMod.LEVELS.forEach((level) => {
       if (!Array.isArray(level.techniques) || !level.techniques.length) return;
       const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
-      const group = document.createElement('div');
-      group.className = 'tech-group';
-      if (!unlocked) group.classList.add('ahead');
-      const heading = document.createElement('h4');
-      heading.textContent = `${level.emoji} ${level.title}`;
-      const stageChip = document.createElement('span');
-      stageChip.className = 'tech-stage-chip';
-      stageChip.textContent = unlocked ? `etapa ${level.id}` : `etapa ${level.id} · más adelante`;
-      heading.appendChild(stageChip);
-      group.appendChild(heading);
       level.techniques.forEach((tech) => {
-        const row = document.createElement('div');
-        row.className = 'level-tech-row';
-        const info = document.createElement('button');
-        info.type = 'button';
-        info.className = 'level-tech-info';
-        info.textContent = `📖 ${tech.name}`;
-        info.addEventListener('click', () => {
-          openModal(tech.name, tech.steps);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'tech-card';
+        if (!unlocked) card.classList.add('ahead');
+        const top = document.createElement('span');
+        top.className = 'tech-card-top';
+        const emoji = document.createElement('span');
+        emoji.className = 'tech-card-emoji';
+        emoji.textContent = level.emoji;
+        const stage = document.createElement('span');
+        stage.className = 'tech-stage-chip';
+        stage.textContent = `Etapa ${level.id}`;
+        top.appendChild(emoji);
+        top.appendChild(stage);
+        if (isTechniqueMastered(level.id, tech.id)) {
+          const tick = document.createElement('span');
+          tick.className = 'tech-card-tick';
+          tick.textContent = '✓';
+          tick.title = 'Técnica con dominio demostrado';
+          top.appendChild(tick);
+        }
+        const name = document.createElement('span');
+        name.className = 'tech-card-name';
+        name.textContent = tech.name;
+        const meta = document.createElement('span');
+        meta.className = 'tech-card-meta';
+        meta.textContent = unlocked ? tech.summary : 'Más adelante en tu progresión';
+        card.appendChild(top);
+        card.appendChild(name);
+        card.appendChild(meta);
+        card.addEventListener('click', () => {
+          openModal(tech.name, [tech.summary].concat(tech.steps), {
+            actionLabel: '▶ Practicar',
+            onAction: () => startLevelSession(level.id, 'practice', tech.id),
+          });
         });
-        const practice = document.createElement('button');
-        practice.type = 'button';
-        practice.className = 'level-tech-practice';
-        practice.textContent = 'Practicar';
-        practice.addEventListener('click', () => {
-          startLevelSession(level.id, 'practice', tech.id);
-        });
-        row.appendChild(info);
-        row.appendChild(practice);
-        group.appendChild(row);
+        container.appendChild(card);
       });
-      container.appendChild(group);
     });
   }
 
@@ -2339,7 +2356,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const streak = computeStreakDays();
       rows.push(['Racha actual', streak === 1 ? '1 día' : `${streak} días`]);
       rows.push(['Etapas con medalla', `${countPathMedals()} de 13`]);
-      rows.push(['Avance del camino', `${pathProgressPercent()}%`]);
+      rows.push(['Avance de la progresión', `${pathProgressPercent()}%`]);
       if (engine && adaptiveState) {
         const history = adaptiveState.history || {};
         let total = 0;
@@ -2459,6 +2476,18 @@ document.addEventListener('DOMContentLoaded', () => {
       levelSkillsCache.byLevel[level.id] = Array.from(all);
     });
     return levelSkillsCache;
+  }
+
+  /** ¿Hay evidencia de dominio de una técnica? (motor: intentos + acierto). */
+  function isTechniqueMastered(levelId, techId) {
+    const engine = getAdaptiveEngine();
+    const info = getLevelSkillsInfo();
+    const skills = info.byTechnique[`${levelId}:${techId}`] || [];
+    if (!engine || !adaptiveState || !skills.length) return false;
+    return skills.every((skillId) => {
+      const s = adaptiveState.skills[skillId];
+      return s && s.attempts >= 6 && engine.accuracyOf(s) >= 0.6;
+    });
   }
 
   /**
@@ -3744,13 +3773,55 @@ document.addEventListener('DOMContentLoaded', () => {
     return typeof Levels !== 'undefined' && Levels ? Levels : null;
   }
 
+  /**
+   * Migración del currículo v2: la reordenación de etapas transfiere
+   * cada medalla conseguida a su etapa equivalente del nuevo orden.
+   * Las etapas nuevas (2 · Duplicar y partir, 3 · × un dígito) empiezan
+   * vírgenes: son contenido que nunca se practicó.
+   */
+  const LEVEL_MIGRATION_V2 = { 0: 0, 1: 1, 2: 8, 3: 4, 4: 5, 5: 6, 6: 10, 7: 11, 8: 9, 9: 7, 10: 11, 11: 12, 12: 12 };
+
+  function migrateLevelProgressV2(old) {
+    const LevelsMod = getLevelsModule();
+    const migrated = { __v2: true };
+    Object.keys(old).forEach((key) => {
+      const target = LEVEL_MIGRATION_V2[key];
+      if (target === undefined) return;
+      const entry = old[key];
+      if (!entry || typeof entry !== 'object') return;
+      const existing = migrated[target];
+      if (!existing) {
+        migrated[target] = Object.assign({}, entry);
+      } else {
+        // Fusiones (7+10 → 11, 11+12 → 12): se conserva lo mejor de cada una
+        migrated[target] = {
+          medal: LevelsMod ? LevelsMod.betterMedal(existing.medal || null, entry.medal || null) : existing.medal || entry.medal,
+          bestAcc: Math.max(existing.bestAcc || 0, entry.bestAcc || 0),
+          bestAvgMs:
+            existing.bestAvgMs > 0 && entry.bestAvgMs > 0
+              ? Math.min(existing.bestAvgMs, entry.bestAvgMs)
+              : existing.bestAvgMs || entry.bestAvgMs || 0,
+          attempts: (existing.attempts || 0) + (entry.attempts || 0),
+          lastPlayed: Math.max(existing.lastPlayed || 0, entry.lastPlayed || 0),
+        };
+      }
+    });
+    return migrated;
+  }
+
   function loadLevelProgress() {
     try {
       const parsed = JSON.parse(localStorage.getItem(LEVEL_PROGRESS_KEY) || 'null');
       levelProgress = parsed && typeof parsed === 'object' ? parsed : {};
+      if (Object.keys(levelProgress).length > 0 && !levelProgress.__v2) {
+        levelProgress = migrateLevelProgressV2(levelProgress);
+        saveLevelProgress();
+      } else if (!levelProgress.__v2) {
+        levelProgress.__v2 = true;
+      }
     } catch (err) {
       console.error('No se pudo cargar levelProgress', err);
-      levelProgress = {};
+      levelProgress = { __v2: true };
     }
   }
 
@@ -3987,17 +4058,33 @@ document.addEventListener('DOMContentLoaded', () => {
       if (pathNodeState(id).medal) withMedal++;
     }
     const pct = pathProgressPercent();
-    const text = document.createElement('p');
-    text.className = 'path-summary-text';
-    text.innerHTML = '';
-    text.textContent = `🏅 ${withMedal}/13 etapas con medalla · camino al ${pct}%`;
+    const hero = document.createElement('div');
+    hero.className = 'path-hero';
+    const big = document.createElement('div');
+    big.className = 'path-hero-pct';
+    const strong = document.createElement('strong');
+    strong.textContent = `${pct}%`;
+    const label = document.createElement('span');
+    label.textContent = 'de tu progresión';
+    big.appendChild(strong);
+    big.appendChild(label);
+    const medals = document.createElement('div');
+    medals.className = 'path-hero-medals';
+    const medalsStrong = document.createElement('strong');
+    medalsStrong.textContent = `🏅 ${withMedal}/13`;
+    const medalsLabel = document.createElement('span');
+    medalsLabel.textContent = 'etapas con medalla';
+    medals.appendChild(medalsStrong);
+    medals.appendChild(medalsLabel);
+    hero.appendChild(big);
+    hero.appendChild(medals);
     const bar = document.createElement('div');
-    bar.className = 'mini-bar';
+    bar.className = 'mini-bar path-hero-bar';
     const fill = document.createElement('div');
     fill.className = 'mini-bar-fill';
     fill.style.width = `${pct}%`;
     bar.appendChild(fill);
-    summary.appendChild(text);
+    summary.appendChild(hero);
     summary.appendChild(bar);
   }
 
@@ -4017,26 +4104,26 @@ document.addEventListener('DOMContentLoaded', () => {
       node.setAttribute('role', 'listitem');
       if (!state.unlocked) node.classList.add('locked');
       if (state.medal) node.classList.add(`medal-${state.medal}`);
+      if (id < current) node.classList.add('done');
       if (id === current) node.classList.add('current');
       if (id === selectedPathNode) node.classList.add('selected');
+      // Anillo de avance alrededor del nodo (conic-gradient vía --p)
+      const stagePct = state.unlocked ? pathStageProgress(id) : 0;
+      node.style.setProperty('--p', String(stagePct));
       const face = document.createElement('span');
       face.className = 'path-node-face';
-      face.textContent = state.medal ? medalIcon[state.medal] : !state.unlocked ? '🔒' : id === 0 ? '🧮' : level ? level.emoji : '·';
+      const core = document.createElement('span');
+      core.className = 'path-node-core';
+      core.textContent = state.medal ? medalIcon[state.medal] : !state.unlocked ? '🔒' : id === 0 ? '🧮' : level ? level.emoji : '·';
+      face.appendChild(core);
       const label = document.createElement('span');
       label.className = 'path-node-label';
       label.textContent = id === 0 ? 'Cimientos' : `${id}`;
       node.appendChild(face);
       node.appendChild(label);
-      // Barra de avance de la etapa: el progreso, visible de un vistazo
-      const stagePct = state.unlocked ? pathStageProgress(id) : 0;
-      const nodeBar = document.createElement('span');
-      nodeBar.className = 'path-node-bar';
-      const nodeFill = document.createElement('span');
-      nodeFill.className = 'path-node-bar-fill';
-      nodeFill.style.width = `${stagePct}%`;
-      nodeBar.appendChild(nodeFill);
-      node.appendChild(nodeBar);
-      node.title = id === 0 ? 'Etapa 0 · Cimientos: las tablas' : level ? `Etapa ${id} · ${level.title}` : `Etapa ${id}`;
+      node.title =
+        (id === 0 ? 'Etapa 0 · Cimientos: las tablas' : level ? `Etapa ${id} · ${level.title}` : `Etapa ${id}`) +
+        (state.unlocked ? ` — ${stagePct}%` : ' — bloqueada');
       node.addEventListener('click', () => {
         selectedPathNode = id;
         renderPathMap();
@@ -4161,12 +4248,17 @@ document.addEventListener('DOMContentLoaded', () => {
     level.techniques.forEach((tech) => {
       const row = document.createElement('div');
       row.className = 'level-tech-row';
+      const mastered = tech.id !== 'blitz' && isTechniqueMastered(level.id, tech.id);
       const info = document.createElement('button');
       info.className = 'level-tech-info';
+      if (mastered) info.classList.add('mastered');
       info.type = 'button';
-      info.textContent = `📖 ${tech.name}`;
+      info.textContent = `${mastered ? '✅' : '📖'} ${tech.name}`;
       info.addEventListener('click', () => {
-        openModal(tech.name, tech.steps);
+        openModal(tech.name, [tech.summary].concat(tech.steps), {
+          actionLabel: '▶ Practicar',
+          onAction: () => startLevelSession(level.id, 'practice', tech.id),
+        });
       });
       const practice = document.createElement('button');
       practice.className = 'level-tech-practice';
@@ -5382,6 +5474,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (modalCloseBtn) {
       modalCloseBtn.addEventListener('click', closeModal);
+      const modalActionBtn = document.getElementById('modal-action-btn');
+      if (modalActionBtn) {
+        modalActionBtn.addEventListener('click', () => {
+          const run = modalAction;
+          closeModal();
+          if (run) run();
+        });
+      }
     }
     if (appModal) {
       // Cerrar al pulsar el fondo oscurecido (no la tarjeta)
