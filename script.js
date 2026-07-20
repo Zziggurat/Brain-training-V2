@@ -94,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let trainingHasMistake = false;
   // Sesión de nivel en curso (práctica de técnica o jefe de nivel)
   let levelSession = null;
+  // Modo racha 🔥: solo si el usuario lo activa, un fallo termina la sesión
+  let strictTrainingSession = false;
 
   // Elementos de la pantalla de progreso
   const heatmapContainer = document.getElementById('heatmap-container');
@@ -321,23 +323,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalCloseBtn = document.getElementById('modal-close-btn');
   let modalLastFocus = null;
 
-  function openModal(title, items) {
+  // Acción opcional del modal (p. ej. "▶ Practicar" en las técnicas)
+  let modalAction = null;
+
+  function openModal(title, items, options = {}) {
     if (!appModal || !modalTitle || !modalBody) return;
     modalLastFocus = document.activeElement;
     modalTitle.textContent = title;
     modalBody.innerHTML = '';
-    items.forEach(([strongText, restText]) => {
+    items.forEach((item) => {
       const li = document.createElement('li');
-      if (strongText) {
-        const strong = document.createElement('strong');
-        strong.textContent = strongText;
-        li.appendChild(strong);
+      if (Array.isArray(item)) {
+        const [strongText, restText] = item;
+        if (strongText) {
+          const strong = document.createElement('strong');
+          strong.textContent = strongText;
+          li.appendChild(strong);
+        }
+        li.appendChild(document.createTextNode(restText));
+      } else {
+        li.textContent = String(item);
       }
-      li.appendChild(document.createTextNode(restText));
       modalBody.appendChild(li);
     });
+    modalAction = typeof options.onAction === 'function' ? options.onAction : null;
+    const actionBtn = document.getElementById('modal-action-btn');
+    if (actionBtn) {
+      actionBtn.classList.toggle('hidden', !modalAction);
+      actionBtn.textContent = options.actionLabel || '▶ Practicar';
+    }
     appModal.classList.remove('hidden');
-    if (modalCloseBtn) {
+    // Llevar el foco a la acción principal del modal
+    if (modalAction && actionBtn) {
+      actionBtn.focus();
+    } else if (modalCloseBtn) {
       modalCloseBtn.focus();
     }
   }
@@ -394,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
     multipleChoice: false,
     numQuestions: 10,
     seconds: 30,
+    strict: false,
   });
 
   function cloneModeSettings(source = defaultModeSettings) {
@@ -408,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? source.numQuestions
         : defaultModeSettings.numQuestions,
       seconds: Number.isFinite(source.seconds) ? source.seconds : defaultModeSettings.seconds,
+      strict: typeof source.strict === 'boolean' ? source.strict : defaultModeSettings.strict,
     };
   }
 
@@ -1292,7 +1313,13 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {number} timeTaken - Tiempo (ms) utilizado para responder.
    */
   function updateDailyStats(isCorrect, timeTaken) {
+    const goalBefore = dailyStats.totalQuestions;
     dailyStats.totalQuestions++;
+    // Celebrar el cierre del anillo justo cuando se alcanza la meta
+    const dailyGoalValue = getDailyGoal();
+    if (goalBefore < dailyGoalValue && dailyStats.totalQuestions >= dailyGoalValue) {
+      showToast(`🎉 ¡Meta diaria cumplida! ${dailyGoalValue} ejercicios`, 'success');
+    }
     if (isCorrect) {
       dailyStats.totalCorrect++;
       dailyStats.streakCurrent++;
@@ -1518,6 +1545,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function computeRecommendations() {
+    // Bienvenida con dirección: al usuario recién llegado se le señala
+    // el camino, no una estadística de combinaciones.
+    if (
+      Object.keys(masteryMap).length === 0 &&
+      (!adaptiveState || Object.keys(adaptiveState.skills).length === 0)
+    ) {
+      const action = nextPathAction();
+      return [
+        {
+          id: 'welcome',
+          title: '👋 Bienvenido a tu progresión',
+          reason: 'Empieza por los Cimientos: domina las tablas y las etapas se abrirán una a una.',
+          action: action ? action.run : () => showScreen('learn'),
+        },
+      ];
+    }
     const { min, max } = getActiveModeConfig();
     const operation = getActiveOperation();
     const now = Date.now();
@@ -2004,22 +2047,66 @@ document.addEventListener('DOMContentLoaded', () => {
     return streak;
   }
 
-  /** Siguiente reto de niveles: primer nivel sin medalla o sin oro. */
-  function findNextChallenge() {
+  /**
+   * La brújula única del camino: calcula el siguiente paso CONCRETO del
+   * usuario (aprender cimientos, practicar la próxima técnica o lanzar
+   * el desafío) y lo devuelve como acción ejecutable. La usan el reto
+   * del Inicio, "Continuar el camino", el asistente y el botón
+   * "Siguiente paso" tras cada sesión: una sola recomendación en toda
+   * la app, sin brújulas contradictorias.
+   */
+  function nextPathAction() {
+    const id = currentPathNode();
     const LevelsMod = getLevelsModule();
-    if (!LevelsMod) return null;
-    const unlockedPlayable = LevelsMod.LEVELS.filter(
-      (l) => Array.isArray(l.techniques) && l.techniques.length > 0 && LevelsMod.isUnlocked(l.id, levelProgress)
-    );
-    let target = unlockedPlayable.find((l) => !(levelProgress[l.id] && levelProgress[l.id].medal));
-    if (!target) {
-      target = unlockedPlayable.find((l) => levelProgress[l.id] && levelProgress[l.id].medal !== 'gold');
+    // Etapa 0: cimientos aún sin medalla → aprender la operación más floja
+    if (id === 0 && !pathNodeState(0).medal) {
+      const mulPct = Math.round(calculateProgress('multiplication'));
+      const divPct = Math.round(calculateProgress('division'));
+      const op = divPct < mulPct ? 'division' : 'multiplication';
+      return {
+        stage: 0,
+        label: op === 'division' ? '🎓 Aprender divisiones' : '🎓 Aprender multiplicaciones',
+        description: `Etapa 0 · Cimientos: domina las tablas (× ${mulPct}% · ÷ ${divPct}%) y las etapas se abrirán.`,
+        run: () => {
+          if (getActiveOperation() !== op) {
+            setActiveOperation(op);
+            localStorage.setItem('config', JSON.stringify(config));
+            updateHomeOperationToggle();
+          }
+          startLearningSession();
+        },
+      };
     }
-    return target || null;
+    const level = LevelsMod ? LevelsMod.getLevel(id) : null;
+    if (!level || !Array.isArray(level.techniques)) return null;
+    // ¿Queda alguna técnica de la etapa sin evidencia de dominio?
+    const pending = level.techniques.find(
+      (tech) => tech.id !== 'blitz' && !isTechniqueMastered(level.id, tech.id)
+    );
+    if (pending) {
+      return {
+        stage: id,
+        label: `🎓 Practicar: ${pending.name}`,
+        description: `Etapa ${id} · ${level.title}: tu siguiente técnica de la progresión.`,
+        run: () => startLevelSession(id, 'practice', pending.id),
+      };
+    }
+    const state = pathNodeState(id);
+    return {
+      stage: id,
+      label: `⚔️ Desafío de la etapa ${id}`,
+      description: state.medal
+        ? `Etapa ${id} · ${level.title}: ya tienes ${MEDAL_LABELS[state.medal].split(' ')[1].toLowerCase()}, ve a por más.`
+        : `Etapa ${id} · ${level.title}: técnicas listas, ¡a por la medalla!`,
+      run: () => startLevelSession(id, 'boss'),
+    };
   }
 
   function countMedals() {
-    return Object.keys(levelProgress).filter((id) => levelProgress[id] && levelProgress[id].medal).length;
+    // Solo etapas 1-12: la de cimientos (clave 0) se cuenta aparte
+    return Object.keys(levelProgress).filter(
+      (id) => id !== '0' && levelProgress[id] && levelProgress[id].medal
+    ).length;
   }
 
   /** Medallas del camino completo (incluye la etapa 0 de cimientos). */
@@ -2077,7 +2164,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const accToday = dailyStats.totalQuestions > 0 ? Math.round((dailyStats.totalCorrect / dailyStats.totalQuestions) * 100) : null;
       const items = [
         { label: 'acierto hoy', value: accToday === null ? '—' : `${accToday}%` },
-        { label: 'camino', value: `🛤️ ${pathProgressPercent()}%` },
+        { label: 'progresión', value: `🛤️ ${pathProgressPercent()}%` },
         { label: 'medallas', value: `🏅 ${countPathMedals()}/13` },
       ];
       items.forEach(({ label, value }) => {
@@ -2092,29 +2179,26 @@ document.addEventListener('DOMContentLoaded', () => {
         quickStats.appendChild(stat);
       });
     }
-    // Próximo reto de niveles
+    // Próximo paso del camino: la misma brújula que en todas partes
     const challenge = document.getElementById('next-challenge-card');
     if (challenge) {
       challenge.innerHTML = '';
-      const level = findNextChallenge();
-      if (!level) {
+      const action = nextPathAction();
+      if (!action) {
         challenge.classList.add('hidden');
       } else {
         challenge.classList.remove('hidden');
         const title = document.createElement('h3');
         title.className = 'section-head';
-        const progress = levelProgress[level.id];
-        title.textContent = `${level.emoji} Tu próximo reto`;
+        title.textContent = '🧭 Tu próximo paso';
         const desc = document.createElement('p');
         desc.className = 'section-desc';
-        desc.textContent = progress && progress.medal
-          ? `Etapa ${level.id} · ${level.title}: ya tienes ${progress.medal === 'silver' ? 'plata' : 'bronce'}, ve a por el oro.`
-          : `Etapa ${level.id} · ${level.title}: supera el desafío para ganar tu medalla.`;
+        desc.textContent = action.description;
         const btn = document.createElement('button');
         btn.className = 'primary-btn';
-        btn.textContent = `⚔️ Desafío de la etapa ${level.id}`;
+        btn.textContent = action.label;
         btn.addEventListener('click', () => {
-          startLevelSession(level.id, 'boss');
+          action.run();
         });
         challenge.appendChild(title);
         challenge.appendChild(desc);
@@ -2178,44 +2262,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** Biblioteca de técnicas en Aprender (se construye una sola vez). */
-  let techLibraryBuilt = false;
+  /**
+   * Biblioteca de técnicas en Entrenar: rejilla de tarjetas visuales.
+   * Cada tarjeta abre el modal de la técnica (resumen + pasos) con el
+   * botón "▶ Practicar" integrado. Se refresca al mostrar la pestaña
+   * para reflejar los desbloqueos y la maestría del momento.
+   */
   function renderTechLibrary() {
-    if (techLibraryBuilt) return;
     const container = document.getElementById('tech-library');
     const LevelsMod = getLevelsModule();
     if (!container || !LevelsMod) return;
+    container.innerHTML = '';
     LevelsMod.LEVELS.forEach((level) => {
       if (!Array.isArray(level.techniques) || !level.techniques.length) return;
-      const group = document.createElement('div');
-      group.className = 'tech-group';
-      const heading = document.createElement('h4');
-      heading.textContent = `${level.emoji} ${level.title}`;
-      group.appendChild(heading);
+      const unlocked = LevelsMod.isUnlocked(level.id, levelProgress);
       level.techniques.forEach((tech) => {
-        const row = document.createElement('div');
-        row.className = 'level-tech-row';
-        const info = document.createElement('button');
-        info.type = 'button';
-        info.className = 'level-tech-info';
-        info.textContent = `📖 ${tech.name}`;
-        info.addEventListener('click', () => {
-          openModal(tech.name, tech.steps);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'tech-card';
+        if (!unlocked) card.classList.add('ahead');
+        const top = document.createElement('span');
+        top.className = 'tech-card-top';
+        const emoji = document.createElement('span');
+        emoji.className = 'tech-card-emoji';
+        emoji.textContent = level.emoji;
+        const stage = document.createElement('span');
+        stage.className = 'tech-stage-chip';
+        stage.textContent = `Etapa ${level.id}`;
+        top.appendChild(emoji);
+        top.appendChild(stage);
+        if (isTechniqueMastered(level.id, tech.id)) {
+          const tick = document.createElement('span');
+          tick.className = 'tech-card-tick';
+          tick.textContent = '✓';
+          tick.title = 'Técnica con dominio demostrado';
+          top.appendChild(tick);
+        }
+        const name = document.createElement('span');
+        name.className = 'tech-card-name';
+        name.textContent = tech.name;
+        const meta = document.createElement('span');
+        meta.className = 'tech-card-meta';
+        meta.textContent = unlocked ? tech.summary : 'Más adelante en tu progresión';
+        card.appendChild(top);
+        card.appendChild(name);
+        card.appendChild(meta);
+        card.addEventListener('click', () => {
+          openModal(tech.name, [tech.summary].concat(tech.steps), {
+            actionLabel: '▶ Practicar',
+            onAction: () => startLevelSession(level.id, 'practice', tech.id),
+          });
         });
-        const practice = document.createElement('button');
-        practice.type = 'button';
-        practice.className = 'level-tech-practice';
-        practice.textContent = 'Practicar';
-        practice.addEventListener('click', () => {
-          startLevelSession(level.id, 'practice', tech.id);
-        });
-        row.appendChild(info);
-        row.appendChild(practice);
-        group.appendChild(row);
+        container.appendChild(card);
       });
-      container.appendChild(group);
     });
-    techLibraryBuilt = true;
   }
 
   /** Perfil: medallas, racha, totales e indicador de dominio. */
@@ -2259,7 +2359,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const streak = computeStreakDays();
       rows.push(['Racha actual', streak === 1 ? '1 día' : `${streak} días`]);
       rows.push(['Etapas con medalla', `${countPathMedals()} de 13`]);
-      rows.push(['Avance del camino', `${pathProgressPercent()}%`]);
+      rows.push(['Avance de la progresión', `${pathProgressPercent()}%`]);
       if (engine && adaptiveState) {
         const history = adaptiveState.history || {};
         let total = 0;
@@ -2379,6 +2479,18 @@ document.addEventListener('DOMContentLoaded', () => {
       levelSkillsCache.byLevel[level.id] = Array.from(all);
     });
     return levelSkillsCache;
+  }
+
+  /** ¿Hay evidencia de dominio de una técnica? (motor: intentos + acierto). */
+  function isTechniqueMastered(levelId, techId) {
+    const engine = getAdaptiveEngine();
+    const info = getLevelSkillsInfo();
+    const skills = info.byTechnique[`${levelId}:${techId}`] || [];
+    if (!engine || !adaptiveState || !skills.length) return false;
+    return skills.every((skillId) => {
+      const s = adaptiveState.skills[skillId];
+      return s && s.attempts >= 6 && engine.accuracyOf(s) >= 0.6;
+    });
   }
 
   /**
@@ -2512,6 +2624,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Contexto LEVEL con tipo "smart": los fallos no terminan la sesión
     currentSpecificSelection = null;
+    strictTrainingSession = false;
     levelSession = { levelId: 0, kind: 'smart', techniqueId: null, results: [] };
     configureTrainingSession(TRAINING_CONTEXT.LEVEL);
     trainProblems = list;
@@ -2625,7 +2738,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let trainIndex = 0;
   let trainCorrectCount = 0;
   let trainTimer = null;
-  let trainTimeRemaining = 0;
   let trainTotalSeconds = 0;
   let trainTypedAnswer = '';
   let trainQuestionStartTime = 0;
@@ -2666,6 +2778,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function currentTrainingMode() {
     if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) return 'level';
     return isSpecificTrainingActive() ? 'specific' : 'training';
+  }
+
+  /**
+   * Regla unificada: fallar muestra la solución y la sesión continúa.
+   * La única excepción es el "modo racha 🔥" que el usuario activa a
+   * propósito en el constructor (un fallo termina la sesión).
+   */
+  function sessionContinuesOnMistake() {
+    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) return true;
+    return trainingSessionContext === TRAINING_CONTEXT.GENERAL && !strictTrainingSession;
   }
 
   /**
@@ -2757,6 +2879,8 @@ document.addEventListener('DOMContentLoaded', () => {
     configMultipleChoice.checked = modeConfig.multipleChoice;
     configNumQuestionsSelect.value = modeConfig.numQuestions;
     configSecondsInput.value = modeConfig.seconds;
+    const strictInput = document.getElementById('config-strict-mode');
+    if (strictInput) strictInput.checked = !!modeConfig.strict;
   }
 
   /**
@@ -2801,6 +2925,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modeConfig.multipleChoice = mcVal;
     modeConfig.numQuestions = numQVal;
     modeConfig.seconds = secondsVal;
+    const strictInput = document.getElementById('config-strict-mode');
+    if (strictInput) modeConfig.strict = strictInput.checked;
     config.activeOperation = selectedOperation;
     localStorage.setItem('config', JSON.stringify(config));
     fillConfigInputs(selectedOperation);
@@ -3650,13 +3776,55 @@ document.addEventListener('DOMContentLoaded', () => {
     return typeof Levels !== 'undefined' && Levels ? Levels : null;
   }
 
+  /**
+   * Migración del currículo v2: la reordenación de etapas transfiere
+   * cada medalla conseguida a su etapa equivalente del nuevo orden.
+   * Las etapas nuevas (2 · Duplicar y partir, 3 · × un dígito) empiezan
+   * vírgenes: son contenido que nunca se practicó.
+   */
+  const LEVEL_MIGRATION_V2 = { 0: 0, 1: 1, 2: 8, 3: 4, 4: 5, 5: 6, 6: 10, 7: 11, 8: 9, 9: 7, 10: 11, 11: 12, 12: 12 };
+
+  function migrateLevelProgressV2(old) {
+    const LevelsMod = getLevelsModule();
+    const migrated = { __v2: true };
+    Object.keys(old).forEach((key) => {
+      const target = LEVEL_MIGRATION_V2[key];
+      if (target === undefined) return;
+      const entry = old[key];
+      if (!entry || typeof entry !== 'object') return;
+      const existing = migrated[target];
+      if (!existing) {
+        migrated[target] = Object.assign({}, entry);
+      } else {
+        // Fusiones (7+10 → 11, 11+12 → 12): se conserva lo mejor de cada una
+        migrated[target] = {
+          medal: LevelsMod ? LevelsMod.betterMedal(existing.medal || null, entry.medal || null) : existing.medal || entry.medal,
+          bestAcc: Math.max(existing.bestAcc || 0, entry.bestAcc || 0),
+          bestAvgMs:
+            existing.bestAvgMs > 0 && entry.bestAvgMs > 0
+              ? Math.min(existing.bestAvgMs, entry.bestAvgMs)
+              : existing.bestAvgMs || entry.bestAvgMs || 0,
+          attempts: (existing.attempts || 0) + (entry.attempts || 0),
+          lastPlayed: Math.max(existing.lastPlayed || 0, entry.lastPlayed || 0),
+        };
+      }
+    });
+    return migrated;
+  }
+
   function loadLevelProgress() {
     try {
       const parsed = JSON.parse(localStorage.getItem(LEVEL_PROGRESS_KEY) || 'null');
       levelProgress = parsed && typeof parsed === 'object' ? parsed : {};
+      if (Object.keys(levelProgress).length > 0 && !levelProgress.__v2) {
+        levelProgress = migrateLevelProgressV2(levelProgress);
+        saveLevelProgress();
+      } else if (!levelProgress.__v2) {
+        levelProgress.__v2 = true;
+      }
     } catch (err) {
       console.error('No se pudo cargar levelProgress', err);
-      levelProgress = {};
+      levelProgress = { __v2: true };
     }
   }
 
@@ -3688,6 +3856,7 @@ document.addEventListener('DOMContentLoaded', () => {
         : LevelsMod.generatePractice(levelId, techniqueId, 10, rng, tier);
     if (!problems.length) return;
     currentSpecificSelection = null;
+    strictTrainingSession = false;
     levelSession = { levelId, kind, techniqueId, results: [] };
     configureTrainingSession(TRAINING_CONTEXT.LEVEL);
     trainProblems = problems;
@@ -3698,6 +3867,27 @@ document.addEventListener('DOMContentLoaded', () => {
     trainRestartBtn.classList.add('hidden');
     showScreen('training');
     renderTrainingProblem();
+  }
+
+  /**
+   * Mostrar el botón "Siguiente paso" al terminar cualquier sesión, con
+   * la acción que la brújula del camino recomiende en ese momento.
+   */
+  function showNextStepButton() {
+    const btn = document.getElementById('train-next-btn');
+    if (!btn) return;
+    const action = nextPathAction();
+    if (!action) {
+      btn.classList.add('hidden');
+      return;
+    }
+    btn.textContent = `▶ ${action.label}`;
+    btn.classList.remove('hidden');
+  }
+
+  function hideNextStepButton() {
+    const btn = document.getElementById('train-next-btn');
+    if (btn) btn.classList.add('hidden');
   }
 
   /** Cerrar la sesión de nivel: resumen y, en el jefe, medalla y registro. */
@@ -3719,6 +3909,7 @@ document.addEventListener('DOMContentLoaded', () => {
         smartAcc >= 85 ? 'success' : 'neutral'
       );
       trainRestartBtn.classList.remove('hidden');
+      showNextStepButton();
       return;
     }
     const level = LevelsMod.getLevel(session.levelId);
@@ -3754,11 +3945,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       setFeedback(
         trainFeedbackDiv,
-        accPct >= 90 ? '¡Técnica dominada! Atrévete con el jefe de nivel.' : 'Buen entrenamiento: repite la técnica hasta rozar el 100%.',
+        accPct >= 90 ? '¡Técnica dominada! Atrévete con el desafío de la etapa.' : 'Buen entrenamiento: repite la técnica hasta rozar el 100%.',
         accPct >= 90 ? 'success' : 'neutral'
       );
     }
     trainRestartBtn.classList.remove('hidden');
+    showNextStepButton();
   }
 
   // ----- EL CAMINO: recorrido oficial de 13 etapas -----
@@ -3775,10 +3967,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function foundationMedal() {
     const pct = foundationProgress();
-    if (pct >= FOUNDATION_THRESHOLDS.gold) return 'gold';
-    if (pct >= FOUNDATION_THRESHOLDS.silver) return 'silver';
-    if (pct >= FOUNDATION_THRESHOLDS.bronze) return 'bronze';
-    return null;
+    const computed =
+      pct >= FOUNDATION_THRESHOLDS.gold
+        ? 'gold'
+        : pct >= FOUNDATION_THRESHOLDS.silver
+          ? 'silver'
+          : pct >= FOUNDATION_THRESHOLDS.bronze
+            ? 'bronze'
+            : null;
+    // Una medalla ganada no se pierde: si el usuario amplía el rango de
+    // tablas y el dominio se recalcula a la baja, la conquista se conserva.
+    const stored = (levelProgress[0] && levelProgress[0].medal) || null;
+    const LevelsMod = getLevelsModule();
+    const best = LevelsMod ? LevelsMod.betterMedal(computed, stored) : computed || stored;
+    if (best && best !== stored) {
+      levelProgress[0] = Object.assign({}, levelProgress[0], { medal: best });
+      saveLevelProgress();
+    }
+    return best || null;
   }
 
   /**
@@ -3856,17 +4062,33 @@ document.addEventListener('DOMContentLoaded', () => {
       if (pathNodeState(id).medal) withMedal++;
     }
     const pct = pathProgressPercent();
-    const text = document.createElement('p');
-    text.className = 'path-summary-text';
-    text.innerHTML = '';
-    text.textContent = `🏅 ${withMedal}/13 etapas con medalla · camino al ${pct}%`;
+    const hero = document.createElement('div');
+    hero.className = 'path-hero';
+    const big = document.createElement('div');
+    big.className = 'path-hero-pct';
+    const strong = document.createElement('strong');
+    strong.textContent = `${pct}%`;
+    const label = document.createElement('span');
+    label.textContent = 'de tu progresión';
+    big.appendChild(strong);
+    big.appendChild(label);
+    const medals = document.createElement('div');
+    medals.className = 'path-hero-medals';
+    const medalsStrong = document.createElement('strong');
+    medalsStrong.textContent = `🏅 ${withMedal}/13`;
+    const medalsLabel = document.createElement('span');
+    medalsLabel.textContent = 'etapas con medalla';
+    medals.appendChild(medalsStrong);
+    medals.appendChild(medalsLabel);
+    hero.appendChild(big);
+    hero.appendChild(medals);
     const bar = document.createElement('div');
-    bar.className = 'mini-bar';
+    bar.className = 'mini-bar path-hero-bar';
     const fill = document.createElement('div');
     fill.className = 'mini-bar-fill';
     fill.style.width = `${pct}%`;
     bar.appendChild(fill);
-    summary.appendChild(text);
+    summary.appendChild(hero);
     summary.appendChild(bar);
   }
 
@@ -3886,26 +4108,26 @@ document.addEventListener('DOMContentLoaded', () => {
       node.setAttribute('role', 'listitem');
       if (!state.unlocked) node.classList.add('locked');
       if (state.medal) node.classList.add(`medal-${state.medal}`);
+      if (id < current) node.classList.add('done');
       if (id === current) node.classList.add('current');
       if (id === selectedPathNode) node.classList.add('selected');
+      // Anillo de avance alrededor del nodo (conic-gradient vía --p)
+      const stagePct = state.unlocked ? pathStageProgress(id) : 0;
+      node.style.setProperty('--p', String(stagePct));
       const face = document.createElement('span');
       face.className = 'path-node-face';
-      face.textContent = state.medal ? medalIcon[state.medal] : !state.unlocked ? '🔒' : id === 0 ? '🧮' : level ? level.emoji : '·';
+      const core = document.createElement('span');
+      core.className = 'path-node-core';
+      core.textContent = state.medal ? medalIcon[state.medal] : !state.unlocked ? '🔒' : id === 0 ? '🧮' : level ? level.emoji : '·';
+      face.appendChild(core);
       const label = document.createElement('span');
       label.className = 'path-node-label';
       label.textContent = id === 0 ? 'Cimientos' : `${id}`;
       node.appendChild(face);
       node.appendChild(label);
-      // Barra de avance de la etapa: el progreso, visible de un vistazo
-      const stagePct = state.unlocked ? pathStageProgress(id) : 0;
-      const nodeBar = document.createElement('span');
-      nodeBar.className = 'path-node-bar';
-      const nodeFill = document.createElement('span');
-      nodeFill.className = 'path-node-bar-fill';
-      nodeFill.style.width = `${stagePct}%`;
-      nodeBar.appendChild(nodeFill);
-      node.appendChild(nodeBar);
-      node.title = id === 0 ? 'Etapa 0 · Cimientos: las tablas' : level ? `Etapa ${id} · ${level.title}` : `Etapa ${id}`;
+      node.title =
+        (id === 0 ? 'Etapa 0 · Cimientos: las tablas' : level ? `Etapa ${id} · ${level.title}` : `Etapa ${id}`) +
+        (state.unlocked ? ` — ${stagePct}%` : ' — bloqueada');
       node.addEventListener('click', () => {
         selectedPathNode = id;
         renderPathMap();
@@ -4030,12 +4252,17 @@ document.addEventListener('DOMContentLoaded', () => {
     level.techniques.forEach((tech) => {
       const row = document.createElement('div');
       row.className = 'level-tech-row';
+      const mastered = tech.id !== 'blitz' && isTechniqueMastered(level.id, tech.id);
       const info = document.createElement('button');
       info.className = 'level-tech-info';
+      if (mastered) info.classList.add('mastered');
       info.type = 'button';
-      info.textContent = `📖 ${tech.name}`;
+      info.textContent = `${mastered ? '✅' : '📖'} ${tech.name}`;
       info.addEventListener('click', () => {
-        openModal(tech.name, tech.steps);
+        openModal(tech.name, [tech.summary].concat(tech.steps), {
+          actionLabel: '▶ Practicar',
+          onAction: () => startLevelSession(level.id, 'practice', tech.id),
+        });
       });
       const practice = document.createElement('button');
       practice.className = 'level-tech-practice';
@@ -4077,6 +4304,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startTrainingSession() {
     levelSession = null;
+    strictTrainingSession = !!getActiveModeConfig().strict;
     configureTrainingSession(TRAINING_CONTEXT.GENERAL);
     trainProblems = generateProblems();
     trainIndex = 0;
@@ -4114,9 +4342,13 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTrainingSkipPolicy();
 
     setFeedback(trainFeedbackDiv, '');
-    // En la práctica de técnica se muestra la pista pedagógica del ejercicio
+    hideNextStepButton();
+    // En la práctica de técnica se muestra la pista pedagógica del ejercicio;
+    // en el resto, las estimaciones anuncian siempre su margen aceptado
     if (levelSession && levelSession.kind === 'practice' && problem.hint) {
       setFeedback(trainFeedbackDiv, `💡 ${problem.hint}`);
+    } else if (Number.isFinite(problem.tolerance) && problem.tolerance > 0) {
+      setFeedback(trainFeedbackDiv, `Estimación: se acepta un margen de ±${problem.tolerance.toLocaleString('es-ES')}`);
     }
     trainAnswerArea.innerHTML = '';
     trainTypedAnswer = '';
@@ -4208,7 +4440,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const deadline = Date.now() + seconds * 1000;
     trainTimer = setInterval(() => {
       const remainingMs = deadline - Date.now();
-      trainTimeRemaining = remainingMs / 1000;
       const percent = (remainingMs / (trainTotalSeconds * 1000)) * 100;
       trainTimerFill.style.width = `${Math.max(0, percent)}%`;
       if (remainingMs <= 0) {
@@ -4265,9 +4496,8 @@ document.addEventListener('DOMContentLoaded', () => {
       scheduleNextTrainingQuestion(500);
     } else {
       trainingHasMistake = true;
-      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
-        // En niveles el fallo no termina la sesión: se muestra la solución
-        // y se avanza (la medalla se juega con la precisión del conjunto).
+      if (sessionContinuesOnMistake()) {
+        // El fallo no termina la sesión: se muestra la solución y se avanza
         buttons.forEach((b) => {
           const val = parseInt(b.textContent, 10);
           b.classList.add(val === correct ? 'correct' : 'incorrect');
@@ -4358,7 +4588,7 @@ document.addEventListener('DOMContentLoaded', () => {
       trainingHasMistake = true;
       const correctText = String(correct);
       display.classList.add('incorrect');
-      if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
+      if (sessionContinuesOnMistake()) {
         display.textContent = correctText;
         setFeedback(trainFeedbackDiv, `La respuesta era ${correctText}.`, 'error');
         saveStats();
@@ -4403,6 +4633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trainScoreDiv.textContent = `Respuestas correctas: ${trainCorrectCount} de ${trainProblems.length}`;
     setFeedback(trainFeedbackDiv, '¡Sesión completada!', 'success');
     trainRestartBtn.classList.remove('hidden');
+    showNextStepButton();
   }
 
   /**
@@ -4421,6 +4652,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // El mensaje ya se ha establecido antes de llamar a esta función
     // Aseguramos que el botón de reinicio sea visible
     trainRestartBtn.classList.remove('hidden');
+    showNextStepButton();
   }
 
   /**
@@ -4433,24 +4665,28 @@ document.addEventListener('DOMContentLoaded', () => {
       clearInterval(trainTimer);
       trainTimer = null;
     }
-    // En sesiones de nivel, agotar el tiempo cuenta como fallo del ítem
-    // pero la sesión continúa con el siguiente ejercicio.
-    if (trainingSessionContext === TRAINING_CONTEXT.LEVEL) {
-      const levelProblem = trainProblems[trainIndex];
-      if (levelProblem && reason === 'time') {
+    // Regla unificada: agotar el tiempo cuenta como fallo del ítem pero
+    // la sesión continúa (salvo modo racha explícito).
+    if (sessionContinuesOnMistake()) {
+      const currentProblemTimed = trainProblems[trainIndex];
+      if (currentProblemTimed && reason === 'time') {
         const timeTaken = Date.now() - trainQuestionStartTime;
-        recordProblemAttempt(levelProblem, {
+        recordProblemAttempt(currentProblemTimed, {
           correct: false,
           timeTaken,
           skipped: false,
-          mode: 'level',
+          mode: currentTrainingMode(),
           source: 'timeout',
           timedOut: true,
         });
         updateDailyStats(false, timeTaken);
         const display = trainAnswerArea.querySelector('#train-display');
-        if (display) display.textContent = String(levelProblem.answer);
-        setFeedback(trainFeedbackDiv, `¡Tiempo agotado! La respuesta era ${levelProblem.answer}.`, 'error');
+        if (display) display.textContent = String(currentProblemTimed.answer);
+        const options = trainAnswerArea.querySelectorAll('.answer-option');
+        options.forEach((btn) => {
+          if (parseInt(btn.textContent, 10) === currentProblemTimed.answer) btn.classList.add('correct');
+        });
+        setFeedback(trainFeedbackDiv, `¡Tiempo agotado! La respuesta era ${currentProblemTimed.answer}.`, 'error');
       }
       trainAnswerArea.querySelectorAll('button').forEach((btn) => {
         btn.disabled = true;
@@ -4536,6 +4772,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     levelSession = null;
+    strictTrainingSession = false;
     configureTrainingSession(TRAINING_CONTEXT.SPECIFIC);
     trainProblems = generateSpecificProblems(currentSpecificSelection);
     trainIndex = 0;
@@ -4896,12 +5133,29 @@ document.addEventListener('DOMContentLoaded', () => {
         buildHeatmap();
       });
     }
-    // Continuar el camino: abre la pestaña Camino en la etapa actual
+    // Continuar el camino: un toque y directo a la acción que toca
     const continuePathBtn = document.getElementById('continue-path-btn');
     if (continuePathBtn) {
       continuePathBtn.addEventListener('click', () => {
+        const action = nextPathAction();
         selectedPathNode = currentPathNode();
-        showScreen('learn');
+        if (action) {
+          action.run();
+        } else {
+          showScreen('learn');
+        }
+      });
+    }
+    // "Siguiente paso" tras cada sesión: continuidad sin navegar
+    const trainNextBtn = document.getElementById('train-next-btn');
+    if (trainNextBtn) {
+      trainNextBtn.addEventListener('click', () => {
+        const action = nextPathAction();
+        if (action) {
+          action.run();
+        } else {
+          showScreen('learn');
+        }
       });
     }
     // Constructor de sesiones: guarda la configuración y arranca
@@ -4972,23 +5226,45 @@ document.addEventListener('DOMContentLoaded', () => {
       // Mostrar confirmación antes de eliminar todo el progreso
       const confirmed = window.confirm('¿Estás seguro de que deseas eliminar todo tu progreso?');
       if (!confirmed) return;
-      // Restablecer estadísticas, estrellas, repaso y errores
+      // Restablecer TODO el progreso: estadísticas, estrellas, repaso,
+      // errores, medallas del camino, motor adaptativo y métricas del día.
+      // La configuración personal (metas, rangos) se conserva.
       stats = Object.assign({}, defaultStats);
       stars = {};
       dueTimes = {};
       intervalStages = {};
       errorsToday = {};
       masteryMap = {};
+      levelProgress = {};
+      selectedPathNode = null;
+      const engineForReset = getAdaptiveEngine();
+      adaptiveState = engineForReset ? engineForReset.createState() : null;
+      dailyStats = {
+        date: getTodayDate(),
+        totalQuestions: 0,
+        totalCorrect: 0,
+        totalTime: 0,
+        streakCurrent: 0,
+        streakMax: 0,
+      };
       saveStats();
       saveStars();
       saveDueTimes();
       saveIntervalStages();
       saveErrors();
       saveMastery();
+      saveLevelProgress();
+      saveDailyStats();
+      if (adaptiveState) {
+        saveAdaptiveState();
+      } else {
+        localStorage.removeItem(ADAPTIVE_STORAGE_KEY);
+      }
       updateProgressBar();
       updateErrorsBadge();
       scheduleAssistantPanelRefresh();
-      showToast('Progreso eliminado', 'success');
+      renderProfile();
+      showToast('Progreso eliminado por completo', 'success');
     });
     // Botones de salida del modo enfoque: vuelven a la pestaña de origen
     learnBackBtn.addEventListener('click', () => {
@@ -5202,6 +5478,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (modalCloseBtn) {
       modalCloseBtn.addEventListener('click', closeModal);
+      const modalActionBtn = document.getElementById('modal-action-btn');
+      if (modalActionBtn) {
+        modalActionBtn.addEventListener('click', () => {
+          const run = modalAction;
+          closeModal();
+          if (run) run();
+        });
+      }
     }
     if (appModal) {
       // Cerrar al pulsar el fondo oscurecido (no la tarjeta)
