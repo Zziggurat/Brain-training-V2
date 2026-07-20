@@ -187,25 +187,6 @@ button:disabled {
   display: none !important;
 }
 
-.round-icon-btn {
-  width: clamp(48px, 12vw, 60px);
-  height: clamp(48px, 12vw, 60px);
-  border-radius: 50%;
-  background: rgba(9, 14, 25, 0.6);
-  color: #f4f7ff;
-  border: 1px solid var(--glass-highlight);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(22px, 4.8vw, 28px);
-  box-shadow: 0 18px 36px rgba(5, 7, 13, 0.4);
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
-}
-
-.round-icon-btn:active {
-  transform: translateY(1px) scale(0.97);
-}
-
 /* --- Pantalla principal --- */
 #home-screen {
   align-items: center;
@@ -237,45 +218,6 @@ button:disabled {
 #learning-screen .progress-text,
 #training-screen .progress-text {
   font-size: clamp(18px, 2.4vw, 24px);
-}
-
-/* Misma anchura que .home-container para que los botones queden
-   alineados con la retícula del resto de la pantalla */
-.home-top-bar {
-  width: min(100%, 960px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 auto;
-}
-
-.home-container {
-  width: min(100%, 960px);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: clamp(24px, 5vh, 48px);
-  margin: 0 auto;
-}
-
-.home-card {
-  width: 100%;
-  max-width: min(100%, clamp(320px, 60vw, 560px));
-  margin: 0 auto;
-  padding: clamp(32px, 6vw, 72px) clamp(24px, 5vw, 56px) clamp(28px, 5vw, 54px);
-  border-radius: clamp(28px, 6vw, var(--card-radius));
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 30px 80px rgba(5, 7, 13, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  text-align: center;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(18px, 4vh, 28px);
 }
 
 #home-title {
@@ -359,22 +301,12 @@ button:disabled {
   color: var(--muted);
 }
 
-.home-buttons {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(12px, 2.5vw, 18px);
-}
-
-.home-buttons button,
-#config-save-btn,
 #learn-skip-btn,
 #train-skip-btn,
 #train-restart-btn,
 #train-next-btn,
 #start-specific-btn,
-#reset-progress-btn,
-#home-progress-btn {
+#reset-progress-btn {
   width: 100%;
   border-radius: clamp(22px, 4vw, 30px);
   padding: clamp(14px, 3.2vw, 20px);
@@ -390,12 +322,9 @@ button:disabled {
     background 0.2s ease;
 }
 
-.home-buttons button:active,
-#config-save-btn:active,
 #learn-skip-btn:active,
 #train-skip-btn:active,
 #train-restart-btn:active,
-#home-progress-btn:active,
 #start-specific-btn:active {
   transform: scale(0.98) translateY(1px);
   box-shadow: 0 4px 12px var(--primary-glow);
@@ -425,31 +354,6 @@ button:disabled {
   font-size: 14px;
   font-weight: 700;
   vertical-align: middle;
-}
-
-.home-bottom-row {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: clamp(16px, 4vh, 32px);
-}
-
-.home-bottom-actions {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: clamp(20px, 6vw, 40px);
-}
-
-.home-bottom-actions .round-icon-btn {
-  width: clamp(52px, 12vw, 64px);
-  height: clamp(52px, 12vw, 64px);
-  font-size: clamp(20px, 4vw, 26px);
-  background: rgba(9, 14, 25, 0.7);
-  color: #f4f7ff;
-  box-shadow: 0 18px 36px rgba(5, 7, 13, 0.4);
 }
 
 .version-tag {
@@ -520,13 +424,6 @@ button:disabled {
 }
 
 /* --- Configuración (tema oscuro consistente con el resto) --- */
-#config-screen {
-  gap: 18px;
-  color: var(--text-color);
-}
-
-.config-header,
-.progress-top-bar,
 .top-bar {
   position: relative;
   display: flex;
@@ -540,15 +437,10 @@ button:disabled {
 /* Cabeceras con título: el hueco del botón de volver se reserva
    simétricamente a ambos lados para que el h2 quede centrado
    respecto a la pantalla, no respecto al espacio sobrante. */
-.config-header,
-.progress-top-bar,
-#tables-screen .top-bar,
-#levels-screen .top-bar {
+#tables-screen .top-bar {
   padding-right: calc(var(--header-button-size) + 12px);
 }
 
-.config-header h2,
-.progress-top-bar h2,
 .top-bar h2 {
   margin: 0;
   font-size: 24px;
@@ -558,8 +450,7 @@ button:disabled {
   text-align: center;
 }
 
-.back-home-btn,
-#progress-back-btn {
+.back-home-btn {
   width: var(--header-button-size);
   height: var(--header-button-size);
   border-radius: 50%;
@@ -576,29 +467,6 @@ button:disabled {
   left: 0;
 }
 
-.config-body {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  width: min(100%, 560px);
-  margin: 0 auto;
-}
-
-.config-section {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 22px;
-  padding: 16px 18px;
-  box-shadow: 0 18px 42px rgba(5, 7, 13, 0.35);
-}
-
-.config-section > label {
-  font-weight: 700;
-  display: block;
-  margin-bottom: 10px;
-  color: var(--text-color);
-}
-
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -608,33 +476,6 @@ button:disabled {
 .checkbox-label {
   color: var(--muted);
   font-size: 15px;
-}
-
-.mode-options {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.mode-options label {
-  background: rgba(9, 14, 25, 0.6);
-  border: 1px solid var(--glass-highlight);
-  color: var(--text-color);
-  padding: 10px 14px;
-  border-radius: 18px;
-  font-size: 15px;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  cursor: pointer;
-}
-
-.config-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: min(100%, 560px);
-  margin: 0 auto;
 }
 
 .interval-inputs {
@@ -899,13 +740,6 @@ input[type="checkbox"] {
 #progress-screen {
   align-items: center;
   gap: 24px;
-}
-
-#progress-screen .progress-top-bar {
-  width: 100%;
-  max-width: 1160px;
-  margin: 0 auto;
-  justify-content: flex-start;
 }
 
 #heatmap-container {
@@ -1497,23 +1331,6 @@ body.focus-mode #toast-container {
   gap: 14px;
 }
 
-.tech-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.tech-group h4 {
-  margin: 6px 0 0;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #7db4ff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .tech-stage-chip {
   font-size: 10.5px;
   font-weight: 700;
@@ -1524,10 +1341,6 @@ body.focus-mode #toast-container {
   border: 1px solid var(--glass-highlight);
   border-radius: 999px;
   padding: 2px 8px;
-}
-
-.tech-group.ahead {
-  opacity: 0.65;
 }
 
 .learn-help-row {
@@ -1916,84 +1729,6 @@ body.focus-mode #toast-container {
 }
 
 /* --- Mapa de niveles de cálculo mental --- */
-#levels-screen {
-  gap: 20px;
-  align-items: center;
-}
-
-#levels-screen .top-bar {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-  justify-content: flex-start;
-}
-
-.levels-map {
-  width: min(100%, 760px);
-  margin: 0 auto 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.level-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 26px;
-  padding: 18px 20px;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 26px 54px rgba(5, 7, 13, 0.45);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.level-card.locked {
-  opacity: 0.55;
-}
-
-.level-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.level-num {
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  border-radius: 16px;
-  background: rgba(9, 14, 25, 0.75);
-  border: 1px solid var(--glass-highlight);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-}
-
-.level-titles {
-  flex: 1;
-  min-width: 0;
-}
-
-.level-titles h3 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.level-titles p {
-  margin: 2px 0 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.level-medal {
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
 .level-techniques {
   display: flex;
   flex-direction: column;
@@ -2644,14 +2379,7 @@ body.focus-mode #toast-container {
 
 /* Escritorio ancho: botones y asistente lado a lado en el home */
 @media (min-width: 980px) {
-  .home-bottom-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: clamp(20px, 3vw, 36px);
-    align-items: start;
-  }
-
-  #assistant-panel {
+    #assistant-panel {
     max-height: 360px;
   }
 }
@@ -2702,12 +2430,7 @@ body.focus-mode #toast-container {
     font-size: 26px;
   }
 
-  .home-card {
-    padding: 20px 24px;
-    gap: 12px;
-  }
-
-  #home-title {
+    #home-title {
     font-size: clamp(24px, 6vh, 34px);
   }
 }

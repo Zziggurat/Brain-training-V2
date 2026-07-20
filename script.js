@@ -353,7 +353,10 @@ document.addEventListener('DOMContentLoaded', () => {
       actionBtn.textContent = options.actionLabel || '▶ Practicar';
     }
     appModal.classList.remove('hidden');
-    if (modalCloseBtn) {
+    // Llevar el foco a la acción principal del modal
+    if (modalAction && actionBtn) {
+      actionBtn.focus();
+    } else if (modalCloseBtn) {
       modalCloseBtn.focus();
     }
   }
@@ -2621,6 +2624,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Contexto LEVEL con tipo "smart": los fallos no terminan la sesión
     currentSpecificSelection = null;
+    strictTrainingSession = false;
     levelSession = { levelId: 0, kind: 'smart', techniqueId: null, results: [] };
     configureTrainingSession(TRAINING_CONTEXT.LEVEL);
     trainProblems = list;
@@ -2734,7 +2738,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let trainIndex = 0;
   let trainCorrectCount = 0;
   let trainTimer = null;
-  let trainTimeRemaining = 0;
   let trainTotalSeconds = 0;
   let trainTypedAnswer = '';
   let trainQuestionStartTime = 0;
@@ -3853,6 +3856,7 @@ document.addEventListener('DOMContentLoaded', () => {
         : LevelsMod.generatePractice(levelId, techniqueId, 10, rng, tier);
     if (!problems.length) return;
     currentSpecificSelection = null;
+    strictTrainingSession = false;
     levelSession = { levelId, kind, techniqueId, results: [] };
     configureTrainingSession(TRAINING_CONTEXT.LEVEL);
     trainProblems = problems;
@@ -4436,7 +4440,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const deadline = Date.now() + seconds * 1000;
     trainTimer = setInterval(() => {
       const remainingMs = deadline - Date.now();
-      trainTimeRemaining = remainingMs / 1000;
       const percent = (remainingMs / (trainTotalSeconds * 1000)) * 100;
       trainTimerFill.style.width = `${Math.max(0, percent)}%`;
       if (remainingMs <= 0) {
@@ -4769,6 +4772,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     levelSession = null;
+    strictTrainingSession = false;
     configureTrainingSession(TRAINING_CONTEXT.SPECIFIC);
     trainProblems = generateSpecificProblems(currentSpecificSelection);
     trainIndex = 0;
